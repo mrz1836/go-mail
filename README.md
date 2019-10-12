@@ -38,17 +38,17 @@ $ dep ensure -update -v
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
 
+### Features
+- Supports multiple service providers _(below)_
+- Supports plain-text and HTML
+- Supports file attachments
+- Supports open & click tracking _(provider dependant)_
+
 ### Supported Service Providers
 - [AWS SES](https://docs.aws.amazon.com/ses/)
 - [Mandrill](https://mandrillapp.com/api/docs/)
 - [Postmark](https://postmarkapp.com/developer)
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
-
-### Features
-- Uses MrZ's [go-logger](https://github.com/mrz1836/go-logger) for either local or remote logging via [LogEntries](https://logentries.com/)
-- Supports multiple service providers
-- Supports plain-text and HTML
-- Supports file attachments
 
 ## Examples & Tests
 All unit tests and [examples](examples/examples.go) run via [Travis CI](https://travis-ci.com/mrz1836/go-mail) and uses [Go version 1.13.x](https://golang.org/doc/go1.13). View the [deployment configuration file](.travis.yml).
