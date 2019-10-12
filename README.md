@@ -95,7 +95,7 @@ import (
 
 func main() {
 
-    // Config
+	// Config
 	mail := new(gomail.MailService)
 	mail.FromName = "No Reply"
 	mail.FromUsername = "no-reply"
@@ -109,11 +109,11 @@ func main() {
 
 	// Create and send a basic email
 	email := mail.NewEmail()
-    email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
-    email.Recipients = []string{"jack@example.com"}
-    email.Subject = "testing go-mail package - test message"
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
+	email.Recipients = []string{"jack@example.com"}
+	email.Subject = "testing go-mail package - test message"
 
-    _ := mail.SendEmail(email, gomail.Mandrill)
+	_ = mail.SendEmail(email, gomail.Mandrill)
 }
 ```
 
