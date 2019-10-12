@@ -6,6 +6,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"strconv"
 
 	"github.com/mrz1836/go-logger"
 	"github.com/mrz1836/go-mail"
@@ -29,6 +30,12 @@ func main() {
 
 	// Postmark
 	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN") //AKIAY...
+
+	// SMTP
+	mail.SmtpHost = os.Getenv("EMAIL_SMTP_HOST")                  //example.com
+	mail.SmtpPort, _ = strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT")) //25
+	mail.SmtpUsername = os.Getenv("EMAIL_SMTP_USERNAME")          //johndoe
+	mail.SmtpPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          //secretPassword
 
 	// Startup the services
 	mail.StartUp()
@@ -57,7 +64,7 @@ func main() {
 	}
 
 	// Send the email (basic example using one provider)
-	provider := gomail.Postmark // AwsSes Mandrill
+	provider := gomail.Smtp // AwsSes Mandrill Postmark
 	err = mail.SendEmail(email, provider)
 	if err != nil {
 		logger.Data(2, logger.ERROR, fmt.Sprintf("error in SendEmail: %s using provider %x", err.Error(), provider))

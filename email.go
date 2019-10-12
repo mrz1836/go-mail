@@ -91,6 +91,8 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 			err = m.sendWithAwsSes(email)
 		} else if provider == Postmark {
 			err = m.sendWithPostmark(email)
+		} else if provider == Smtp {
+			err = m.sendWithSmtp(email)
 		}
 	} else {
 		err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent", provider, m.AvailableProviders)
