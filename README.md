@@ -31,18 +31,19 @@ $ dep ensure -update -v
 
 ### Package Dependencies
 - domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
-- keighl's [postmark](https://github.com/keighl/postmark)
+- keighl's [postmark](https://github.com/mrz1836/postmark)
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
-- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
 - mrz1836's [go-logger](https://github.com/mrz1836/go-logger)
+- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
 
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
 
 ### Supported Service Providers
+- [AWS SES](https://docs.aws.amazon.com/ses/)
 - [Mandrill](https://mandrillapp.com/api/docs/)
 - [Postmark](https://postmarkapp.com/developer)
-- [AWS SES](https://docs.aws.amazon.com/ses/)
+- [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
 
 ### Features
 - Uses MrZ's [go-logger](https://github.com/mrz1836/go-logger) for either local or remote logging via [LogEntries](https://logentries.com/)
@@ -103,9 +104,9 @@ func main() {
 ## Contributing
 
 This project uses:
-- keighl's [postmark](https://github.com/keighl/postmark) package
-- mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package
 - domodwyer's [mailyak](https://github.com/domodwyer/mailyak) package
+- keighl's [postmark](https://github.com/mrz1836/postmark) package
+- mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package
 - sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses) package
 
 View the [contributing guidelines](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md).
