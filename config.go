@@ -16,7 +16,7 @@ const (
 	AwsSes   ServiceProvider = iota // AWS SES Service
 	Mandrill                        // Mandrill Email Service
 	Postmark                        // Postmark Email Service
-	Smtp                            // Send via smtp
+	SMTP                            // Send via smtp
 )
 
 const (
@@ -43,10 +43,10 @@ type MailService struct {
 	Important           bool              `json:"important" mapstructure:"important"`                         // whether or not this message is important, and should be delivered ahead of non-important messages
 	MandrillAPIKey      string            `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`           // mandrill api key
 	PostmarkServerToken string            `json:"postmark_server_token" mapstructure:"postmark_server_token"` // ie: abc123...
-	SmtpHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
-	SmtpPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
-	SmtpPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                         // ie: 25
-	SmtpUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`                 // ie: testuser
+	SMTPHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
+	SMTPPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
+	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                         // ie: 25
+	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`                 // ie: testuser
 	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`                   // whether or not to turn on click tracking for the message
 	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`                     // whether or not to turn on open tracking for the message
 
@@ -122,15 +122,15 @@ func (m *MailService) StartUp() {
 	}
 
 	// If the smtp credentials exist
-	if len(m.SmtpHost) == 0 || len(m.SmtpUsername) == 0 || len(m.SmtpPassword) == 0 {
+	if len(m.SMTPHost) == 0 || len(m.SMTPUsername) == 0 || len(m.SMTPPassword) == 0 {
 		logger.Data(2, logger.DEBUG, "smtp credentials not set, skipping smtp...")
 	} else {
 
 		// set the credentials
-		m.smtpAuth = smtp.PlainAuth("", m.SmtpUsername, m.SmtpPassword, m.SmtpHost)
+		m.smtpAuth = smtp.PlainAuth("", m.SMTPUsername, m.SMTPPassword, m.SMTPHost)
 
 		// Add to the list of available providers
-		m.AvailableProviders = append(m.AvailableProviders, Smtp)
+		m.AvailableProviders = append(m.AvailableProviders, SMTP)
 	}
 
 	// No service providers found

@@ -7,11 +7,11 @@ import (
 	"github.com/mrz1836/go-logger"
 )
 
-// sendWithSmtp sends an email using the smtp service
-func (m *MailService) sendWithSmtp(email *Email) (err error) {
+// sendWithSMTP sends an email using the smtp service
+func (m *MailService) sendWithSMTP(email *Email) (err error) {
 
 	// Create new mail message
-	mail := mailyak.New(fmt.Sprintf("%s:%d", m.SmtpHost, m.SmtpPort), m.smtpAuth)
+	mail := mailyak.New(fmt.Sprintf("%s:%d", m.SMTPHost, m.SMTPPort), m.smtpAuth)
 
 	// Add the to recipients
 	mail.To(email.Recipients...)
