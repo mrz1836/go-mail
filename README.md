@@ -1,5 +1,5 @@
 # go-mail
-**go-mail** is a lightweight email package with multi-provider support
+**go-mail** is a lightweight email package with multi-provider support (ses, mandrill, postmark)
 
 | | | | | | | |
 |-|-|-|-|-|-|-|
@@ -30,8 +30,11 @@ $ dep ensure -update -v
 ```
 
 ### Package Dependencies
+- domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
 - keighl's [postmark](https://github.com/keighl/postmark)
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
+- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
+- mrz1836's [go-logger](https://github.com/mrz1836/go-logger)
 
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
@@ -44,6 +47,8 @@ You can view the generated [documentation here](https://godoc.org/github.com/mrz
 ### Features
 - Uses MrZ's [go-logger](https://github.com/mrz1836/go-logger) for either local or remote logging via [LogEntries](https://logentries.com/)
 - Supports multiple service providers
+- Supports plain-text and HTML
+- Supports file attachments
 
 ## Examples & Tests
 All unit tests and [examples](examples/examples.go) run via [Travis CI](https://travis-ci.com/mrz1836/go-mail) and uses [Go version 1.13.x](https://golang.org/doc/go1.13). View the [deployment configuration file](.travis.yml).
@@ -97,9 +102,11 @@ func main() {
 
 ## Contributing
 
-This project uses keighl's [postmark](https://github.com/keighl/postmark) package.
-
-This project uses mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package.
+This project uses:
+- keighl's [postmark](https://github.com/keighl/postmark) package
+- mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package
+- domodwyer's [mailyak](https://github.com/domodwyer/mailyak) package
+- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses) package
 
 View the [contributing guidelines](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
