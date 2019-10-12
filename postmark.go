@@ -17,7 +17,7 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 	// Create the email struct
 	postmarkEmail := postmark.Email{
 		From:       email.FromAddress,
-		HtmlBody:   email.HTMLContent,
+		HTMLBody:   email.HTMLContent,
 		ReplyTo:    email.ReplyToAddress,
 		Subject:    email.Subject,
 		TextBody:   email.PlainTextContent,
