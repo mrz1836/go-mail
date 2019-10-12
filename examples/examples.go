@@ -14,7 +14,7 @@ import (
 
 func main() {
 
-	//basicExample()
+	basicExample()
 
 	fullExample()
 }
