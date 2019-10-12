@@ -3,7 +3,7 @@
 
 | | | | | | | |
 |-|-|-|-|-|-|-|
-| ![License](https://img.shields.io/github/license/mrz1836/go-mail.svg?style=flat&p=1) | [![Report](https://goreportcard.com/badge/github.com/mrz1836/go-mail?style=flat&p=1)](https://goreportcard.com/report/github.com/mrz1836/go-mail)  | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/0b377a0d1dde4b6ba189545aa7ee2e17)](https://www.codacy.com/app/mrz1818/go-mail?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=mrz1836/go-mail&amp;utm_campaign=Badge_Grade) |  [![Build Status](https://travis-ci.com/mrz1836/go-mail.svg?branch=master)](https://travis-ci.com/mrz1836/go-mail)   |  [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat)](https://github.com/RichardLitt/standard-readme) | [![Release](https://img.shields.io/github/release-pre/mrz1836/go-mail.svg?style=flat)](https://github.com/mrz1836/go-mail/releases) | [![GoDoc](https://godoc.org/github.com/mrz1836/go-mail?status.svg&style=flat)](https://godoc.org/github.com/mrz1836/go-mail) |
+| ![License](https://img.shields.io/github/license/mrz1836/go-mail.svg?style=flat&v=1) | [![Report](https://goreportcard.com/badge/github.com/mrz1836/go-mail?style=flat&p=1)](https://goreportcard.com/report/github.com/mrz1836/go-mail)  | [![Codacy Badge](https://api.codacy.com/project/badge/Grade/52bfcc447ee24c29a2a3fb65c53a4de3)](https://www.codacy.com/app/mrz1818/go-mail?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=mrz1836/go-mail&amp;utm_campaign=Badge_Grade) |  [![Build Status](https://travis-ci.com/mrz1836/go-mail.svg?branch=master)](https://travis-ci.com/mrz1836/go-mail)   |  [![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat)](https://github.com/RichardLitt/standard-readme) | [![Release](https://img.shields.io/github/release-pre/mrz1836/go-mail.svg?style=flat&v=1)](https://github.com/mrz1836/go-mail/releases) | [![GoDoc](https://godoc.org/github.com/mrz1836/go-mail?status.svg&style=flat)](https://godoc.org/github.com/mrz1836/go-mail) |
 
 ## Table of Contents
 - [Installation](#installation)
@@ -117,4 +117,4 @@ Support the development of this project 🙏
 
 ## License
 
-![License](https://img.shields.io/github/license/mrz1836/go-mail.svg?style=flat&p=1)
+![License](https://img.shields.io/github/license/mrz1836/go-mail.svg?style=flat&v=1)
