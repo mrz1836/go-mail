@@ -3,9 +3,9 @@ package gomail
 import (
 	"fmt"
 
-	"github.com/keighl/postmark"
 	"github.com/mattbaird/gochimp"
 	"github.com/mrz1836/go-logger"
+	"github.com/mrz1836/postmark"
 	"github.com/sourcegraph/go-ses"
 )
 
