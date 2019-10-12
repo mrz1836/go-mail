@@ -70,7 +70,7 @@ func (client *Client) GetOutboundMessage(messageID string) (OutboundMessage, err
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("messages/outbound/%s/details", messageID),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -84,7 +84,7 @@ func (client *Client) GetOutboundMessageDump(messageID string) (string, error) {
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("messages/outbound/%s/dump", messageID),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res.Body, err
 }
@@ -115,7 +115,7 @@ func (client *Client) GetOutboundMessages(count int64, offset int64, options map
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("messages/outbound?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res.Messages, res.TotalCount, err
 }
@@ -139,7 +139,7 @@ type Open struct {
 	Platform string
 	// ReadSeconds - Shows the reading time in seconds
 	ReadSeconds int64
-	// Geo - Contains IP of the recipient’s machine where the email was opened and the information based on that IP - geo coordinates (Coords) and country, region, city and zip.
+	// Geo - Contains IP of the recipient’s machine where the email was opened and the information based on that IP - geo coordinates (Coordinates) and country, region, city and zip.
 	Geo map[string]string
 }
 
@@ -166,7 +166,7 @@ func (client *Client) GetOutboundMessagesOpens(count int64, offset int64, option
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("messages/outbound/opens?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res.Opens, res.TotalCount, err
 }
@@ -186,7 +186,7 @@ func (client *Client) GetOutboundMessageOpens(messageID string, count int64, off
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("messages/outbound/opens/%s?%s", messageID, values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res.Opens, res.TotalCount, err
 }

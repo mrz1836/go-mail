@@ -35,7 +35,7 @@ func (client *Client) GetSenderSignatures(count, offset int64) (SenderSignatures
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("senders?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }

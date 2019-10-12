@@ -29,6 +29,8 @@ type Email struct {
 	Headers []Header `json:",omitempty"`
 	// TrackOpens: Activate open tracking for this email.
 	TrackOpens bool `json:",omitempty"`
+	// TrackLinks:Activate link tracking for links in the HTML or Text bodies of this email. Possible options: None HtmlAndText HtmlOnly TextOnly
+	TrackLinks string `json:",omitempty"`
 	// Attachments: List of attachments
 	Attachments []Attachment `json:",omitempty"`
 	// Metadata: metadata
@@ -77,7 +79,7 @@ func (client *Client) SendEmail(email Email) (EmailResponse, error) {
 		Method:    "POST",
 		Path:      "email",
 		Payload:   email,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 
 	if res.ErrorCode != 0 {
@@ -91,12 +93,12 @@ func (client *Client) SendEmail(email Email) (EmailResponse, error) {
 // Note, individual emails in the batch can error, so it would be wise to
 // range over the responses and sniff for errors
 func (client *Client) SendEmailBatch(emails []Email) ([]EmailResponse, error) {
-	res := []EmailResponse{}
+	var res []EmailResponse
 	err := client.doRequest(parameters{
 		Method:    "POST",
 		Path:      "email/batch",
 		Payload:   emails,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }

@@ -42,7 +42,7 @@ func (client *Client) GetTemplate(templateID string) (Template, error) {
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("templates/%s", templateID),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -69,7 +69,7 @@ func (client *Client) GetTemplates(count int64, offset int64) ([]TemplateInfo, i
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("templates?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res.Templates, res.TotalCount, err
 }
@@ -84,7 +84,7 @@ func (client *Client) CreateTemplate(template Template) (TemplateInfo, error) {
 		Method:    "POST",
 		Path:      "templates",
 		Payload:   template,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -99,7 +99,7 @@ func (client *Client) EditTemplate(templateID string, template Template) (Templa
 		Method:    "PUT",
 		Path:      fmt.Sprintf("templates/%s", templateID),
 		Payload:   template,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -113,7 +113,7 @@ func (client *Client) DeleteTemplate(templateID string) error {
 	err := client.doRequest(parameters{
 		Method:    "DELETE",
 		Path:      fmt.Sprintf("templates/%s", templateID),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 
 	if res.ErrorCode != 0 {
@@ -165,7 +165,7 @@ func (client *Client) ValidateTemplate(validateTemplateBody ValidateTemplateBody
 		Method:    "POST",
 		Path:      "templates/validate",
 		Payload:   validateTemplateBody,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -175,8 +175,10 @@ func (client *Client) ValidateTemplate(validateTemplateBody ValidateTemplateBody
 
 // TemplatedEmail is used to send an email via a template
 type TemplatedEmail struct {
-	// TemplateId: REQUIRED - The template to use when sending this message.
-	TemplateId int64
+	// TemplateId: REQUIRED if TemplateAlias is not specified. - The template id to use when sending this message.
+	TemplateId int64 `json:",omitempty"`
+	// TemplateAlias: REQUIRED if TemplateId is not specified. - The template alias to use when sending this message.
+	TemplateAlias string `json:",omitempty"`
 	// TemplateModel: The model to be applied to the specified template to generate HtmlBody, TextBody, and Subject.
 	TemplateModel map[string]interface{} `json:",omitempty"`
 	// InlineCss: By default, if the specified template contains an HTMLBody, we will apply the style blocks as inline attributes to the rendered HTML content. You may opt-out of this behavior by passing false for this request field.
@@ -208,22 +210,22 @@ func (client *Client) SendTemplatedEmail(email TemplatedEmail) (EmailResponse, e
 		Method:    "POST",
 		Path:      "email/withTemplate",
 		Payload:   email,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
 
 // SendTemplatedEmail sends batch email using a template (TemplateId)
 func (client *Client) SendTemplatedEmailBatch(emails []TemplatedEmail) ([]EmailResponse, error) {
-	res := []EmailResponse{}
-	var formatEmails map[string]interface{} = map[string]interface{}{
+	var res []EmailResponse
+	var formatEmails = map[string]interface{}{
 		"Messages": emails,
 	}
 	err := client.doRequest(parameters{
 		Method:    "POST",
 		Path:      "email/batchWithTemplates",
 		Payload:   formatEmails,
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }

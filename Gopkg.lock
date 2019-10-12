@@ -10,14 +10,6 @@
   version = "v3.1.1"
 
 [[projects]]
-  digest = "1:0035d479dbe4659f6161875cbc8b7b15bcade891302eaec8e2f903e9da2a6ed4"
-  name = "github.com/keighl/postmark"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "e30e577cc7fb936f44aaed4f9bb6b6ddf2190118"
-  version = "1.2.0"
-
-[[projects]]
   branch = "master"
   digest = "1:c258187980f0038ca95c58dd19d4c0aae28826405e91de785c395d4b5d371f15"
   name = "github.com/mattbaird/gochimp"
@@ -34,6 +26,14 @@
   version = "v0.0.4"
 
 [[projects]]
+  digest = "1:1bc0a207120a77ad250e1693918055ea0d9f6331d302204ed92c069c369cf27d"
+  name = "github.com/mrz1836/postmark"
+  packages = ["."]
+  pruneopts = "NUT"
+  revision = "52861d5381291af7117902b248f10aa29417d93c"
+  version = "v1.2.1"
+
+[[projects]]
   branch = "master"
   digest = "1:80175942217ce760cb9b9d68bf63e1a2749d0536fbb6f3282709050ceca4e9f4"
   name = "github.com/sourcegraph/go-ses"
@@ -46,9 +46,9 @@
   analyzer-version = 1
   input-imports = [
     "github.com/domodwyer/mailyak",
-    "github.com/keighl/postmark",
     "github.com/mattbaird/gochimp",
     "github.com/mrz1836/go-logger",
+    "github.com/mrz1836/postmark",
     "github.com/sourcegraph/go-ses",
   ]
   solver-name = "gps-cdcl"

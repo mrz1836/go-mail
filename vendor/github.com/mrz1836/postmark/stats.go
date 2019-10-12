@@ -49,7 +49,7 @@ func (client *Client) GetOutboundStats(options map[string]interface{}) (Outbound
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -59,7 +59,7 @@ func (client *Client) GetOutboundStats(options map[string]interface{}) (Outbound
 
 // SendDay - send stats for a specific day
 type SendDay struct {
-	// Date - prettttay self explanatory
+	// Date - self explanatory
 	Date string
 	// Sent - number of emails sent
 	Sent int64
@@ -85,7 +85,7 @@ func (client *Client) GetSentCounts(options map[string]interface{}) (SendCounts,
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/sends?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -95,7 +95,7 @@ func (client *Client) GetSentCounts(options map[string]interface{}) (SendCounts,
 
 // BounceDay - bounce stats for a specific day
 type BounceDay struct {
-	// Date - prettttay self explanatory
+	// Date - self explanatory
 	Date string
 	// HardBounce - number of hard bounces
 	HardBounce int64
@@ -133,7 +133,7 @@ func (client *Client) GetBounceCounts(options map[string]interface{}) (BounceCou
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/bounces?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -143,7 +143,7 @@ func (client *Client) GetBounceCounts(options map[string]interface{}) (BounceCou
 
 // SpamDay - spam complaints for a specific day
 type SpamDay struct {
-	// Date - prettttay self explanatory
+	// Date - self explanatory
 	Date string
 	// SpamComplaint - number of spam complaints received
 	SpamComplaint int64
@@ -170,7 +170,7 @@ func (client *Client) GetSpamCounts(options map[string]interface{}) (SpamCounts,
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/spam?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -180,7 +180,7 @@ func (client *Client) GetSpamCounts(options map[string]interface{}) (SpamCounts,
 
 // TrackedDay - tracked emails sent on a specific day
 type TrackedDay struct {
-	// Date - prettttay self explanatory
+	// Date - self explanatory
 	Date string
 	// Tracked - number of emails tracked sent
 	Tracked int64
@@ -206,7 +206,7 @@ func (client *Client) GetTrackedCounts(options map[string]interface{}) (TrackedC
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/tracked?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -216,7 +216,7 @@ func (client *Client) GetTrackedCounts(options map[string]interface{}) (TrackedC
 
 // OpenedDay - opened outbound emails sent on a specific day
 type OpenedDay struct {
-	// Date - prettttay self explanatory
+	// Date - self explanatory
 	Date string
 	// Opens - Indicates total number of opened emails. This total includes recipients who opened your email multiple times.
 	Opens int64
@@ -246,7 +246,7 @@ func (client *Client) GetOpenCounts(options map[string]interface{}) (OpenCounts,
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/opens?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
@@ -300,7 +300,7 @@ func (client *Client) GetPlatformCounts(options map[string]interface{}) (Platfor
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("stats/outbound/platform?%s", values.Encode()),
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }

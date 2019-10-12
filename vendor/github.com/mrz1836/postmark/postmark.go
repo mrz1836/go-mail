@@ -26,8 +26,8 @@ type Client struct {
 }
 
 const (
-	server_token  = "server"
-	account_token = "account"
+	accountToken = "account"
+	serverToken  = "server"
 )
 
 // Options is an object to hold variable parameters to perform request.
@@ -54,18 +54,20 @@ func NewClient(serverToken string, accountToken string) *Client {
 	}
 }
 
-func (client *Client) doRequest(opts parameters, dst interface{}) error {
+func (client *Client) doRequest(opts parameters, dst interface{}) (err error) {
 	url := fmt.Sprintf("%s/%s", client.BaseURL, opts.Path)
 
-	req, err := http.NewRequest(opts.Method, url, nil)
+	var req *http.Request
+	req, err = http.NewRequest(opts.Method, url, nil)
 	if err != nil {
-		return err
+		return
 	}
 
 	if opts.Payload != nil {
-		payloadData, err := json.Marshal(opts.Payload)
+		var payloadData []byte
+		payloadData, err = json.Marshal(opts.Payload)
 		if err != nil {
-			return err
+			return
 		}
 		req.Body = ioutil.NopCloser(bytes.NewBuffer(payloadData))
 	}
@@ -74,25 +76,29 @@ func (client *Client) doRequest(opts parameters, dst interface{}) error {
 	req.Header.Add("Content-Type", "application/json")
 
 	switch opts.TokenType {
-	case account_token:
+	case accountToken:
 		req.Header.Add("X-Postmark-Account-Token", client.AccountToken)
 
 	default:
 		req.Header.Add("X-Postmark-Server-Token", client.ServerToken)
 	}
 
-	res, err := client.HTTPClient.Do(req)
+	var res *http.Response
+	res, err = client.HTTPClient.Do(req)
 	if err != nil {
-		return err
+		return
 	}
 
-	defer res.Body.Close()
-	body, err := ioutil.ReadAll(res.Body)
+	defer func() {
+		_ = res.Body.Close()
+	}()
+	var body []byte
+	body, err = ioutil.ReadAll(res.Body)
 	if err != nil {
-		return err
+		return
 	}
 	err = json.Unmarshal(body, dst)
-	return err
+	return
 }
 
 // APIError represents errors returned by Postmark

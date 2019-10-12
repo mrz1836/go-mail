@@ -50,7 +50,7 @@ func (client *Client) GetServer(serverID string) (Server, error) {
 	err := client.doRequest(parameters{
 		Method:    "GET",
 		Path:      fmt.Sprintf("servers/%s", serverID),
-		TokenType: account_token,
+		TokenType: accountToken,
 	}, &res)
 	return res, err
 }
@@ -64,7 +64,7 @@ func (client *Client) EditServer(serverID string, server Server) (Server, error)
 	err := client.doRequest(parameters{
 		Method:    "PUT",
 		Path:      fmt.Sprintf("servers/%s", serverID),
-		TokenType: account_token,
+		TokenType: accountToken,
 	}, &res)
 	return res, err
 }

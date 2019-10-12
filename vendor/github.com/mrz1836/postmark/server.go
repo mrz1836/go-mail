@@ -5,9 +5,9 @@ package postmark
 func (client *Client) GetCurrentServer() (Server, error) {
 	res := Server{}
 	err := client.doRequest(parameters{
-		Method: "GET",
-		Path: "server",
-		TokenType: server_token,
+		Method:    "GET",
+		Path:      "server",
+		TokenType: serverToken,
 	}, &res)
 
 	return res, err
@@ -23,7 +23,7 @@ func (client *Client) EditCurrentServer(server Server) (Server, error) {
 	err := client.doRequest(parameters{
 		Method:    "PUT",
 		Path:      "server",
-		TokenType: server_token,
+		TokenType: serverToken,
 	}, &res)
 	return res, err
 }
