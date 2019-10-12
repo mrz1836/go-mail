@@ -29,7 +29,7 @@ type MailService struct {
 	MandrillAPIKey     string               `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`       // mandrill api key
 	TrackClicks        bool                 `json:"track_clicks" mapstructure:"track_clicks"`               // whether or not to turn on click tracking for the message
 	TrackOpens         bool                 `json:"track_opens" mapstructure:"track_opens"`                 // whether or not to turn on open tracking for the message
-	mandrillAPI        *gochimp.MandrillAPI `json:"-" mapstructure:"-"`                                     // internal mandrill api loaded
+	mandrillAPI        *gochimp.MandrillAPI // internal mandrill api loaded
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers
