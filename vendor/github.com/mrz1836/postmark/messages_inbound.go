@@ -34,8 +34,8 @@ type InboundMessage struct {
 	MailboxHash string
 	// TextBody - Plain text email message.
 	TextBody string
-	// HtmlBody - HTML email message.
-	HtmlBody string
+	// HTMLBody - HTML email message.
+	HTMLBody string `json:"HtmlBody"`
 	// Tag - Tag name
 	Tag string
 	// Headers - List of objects that each represent a header name and value.

@@ -18,12 +18,12 @@
   revision = "a267553896d1cbd0ccfc259ad5442e62bdc3d30d"
 
 [[projects]]
-  digest = "1:1bc0a207120a77ad250e1693918055ea0d9f6331d302204ed92c069c369cf27d"
+  digest = "1:9ccc303e5401f6f5d18d1613f44d0b98eb00466c25e44112aaa837c8fa291b57"
   name = "github.com/mrz1836/postmark"
   packages = ["."]
   pruneopts = "NUT"
-  revision = "52861d5381291af7117902b248f10aa29417d93c"
-  version = "v1.2.1"
+  revision = "50bf771e5d18aa5ec7e27293859515e9861b33ba"
+  version = "v1.2.2"
 
 [[projects]]
   branch = "master"

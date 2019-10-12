@@ -19,9 +19,9 @@ type Email struct {
 	Subject string `json:",omitempty"`
 	// Tag: Email tag that allows you to categorize outgoing emails and get detailed statistics.
 	Tag string `json:",omitempty"`
-	// HtmlBody: HTML email message. REQUIRED, If no TextBody specified
-	HtmlBody string `json:",omitempty"`
-	// TextBody: Plain text email message. REQUIRED, If no HtmlBody specified
+	// HTMLBody: HTML email message. REQUIRED, If no TextBody specified
+	HTMLBody string `json:"HtmlBody,omitempty"`
+	// TextBody: Plain text email message. REQUIRED, If no HTMLBody specified
 	TextBody string `json:",omitempty"`
 	// ReplyTo: Reply To override email address. Defaults to the Reply To set in the sender signature.
 	ReplyTo string `json:",omitempty"`

@@ -10,24 +10,24 @@ type Server struct {
 	ID int64
 	// Name of server
 	Name string
-	// ApiTokens associated with server.
-	ApiTokens []string
+	// APITokens associated with server.
+	APITokens []string `json:"ApiTokens"`
 	// ServerLink to your server overview page in Postmark.
 	ServerLink string
 	// Color of the server in the rack screen. Purple Blue Turquoise Green Red Yellow Grey
 	Color string
-	// SmtpApiActivated specifies whether or not SMTP is enabled on this server.
-	SmtpApiActivated bool
+	// SMTPAPIActivated specifies whether or not SMTP is enabled on this server.
+	SMTPAPIActivated bool `json:"SmtpApiActivated"`
 	// RawEmailEnabled allows raw email to be sent with inbound.
 	RawEmailEnabled bool
 	// InboundAddress is the inbound email address
 	InboundAddress string
-	// InboundHookUrl to POST to every time an inbound event occurs.
-	InboundHookUrl string
-	// BounceHookUrl to POST to every time a bounce event occurs.
-	BounceHookUrl string
-	// OpenHookUrl to POST to every time an open event occurs.
-	OpenHookUrl string
+	// InboundHookURL to POST to every time an inbound event occurs.
+	InboundHookURL string `json:"InboundHookUrl"`
+	// BounceHookURL to POST to every time a bounce event occurs.
+	BounceHookURL string `json:"BounceHookUrl"`
+	// OpenHookURL to POST to every time an open event occurs.
+	OpenHookURL string `json:"OpenHookUrl"`
 	// PostFirstOpenOnly - If set to true, only the first open by a particular recipient will initiate the open webhook. Any
 	// subsequent opens of the same email by the same recipient will not initiate the webhook.
 	PostFirstOpenOnly bool

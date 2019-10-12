@@ -7,26 +7,26 @@ import (
 
 // Template represents an email template on the server
 type Template struct {
-	// TemplateId: ID of template
-	TemplateId int64
+	// TemplateID: ID of template
+	TemplateID int64 `json:"TemplateID"`
 	// Name: Name of template
 	Name string
 	// Subject: The content to use for the Subject when this template is used to send email.
 	Subject string
-	// HtmlBody: The content to use for the HtmlBody when this template is used to send email.
-	HtmlBody string
+	// HTMLBody: The content to use for the HTMLBody when this template is used to send email.
+	HTMLBody string `json:"HtmlBody"`
 	// TextBody: The content to use for the TextBody when this template is used to send email.
 	TextBody string
-	// AssociatedServerId: The ID of the Server with which this template is associated.
-	AssociatedServerId int64
+	// AssociatedServerID: The ID of the Server with which this template is associated.
+	AssociatedServerID int64 `json:"AssociatedServerId"`
 	// Active: Indicates that this template may be used for sending email.
 	Active bool
 }
 
 // TemplateInfo is a limited set of template info returned via Index/Editing endpoints
 type TemplateInfo struct {
-	// TemplateId: ID of template
-	TemplateId int64
+	// TemplateID: ID of template
+	TemplateID int64 `json:"TemplateID"`
 	// Name: Name of template
 	Name string
 	// Active: Indicates that this template may be used for sending email.
@@ -130,7 +130,7 @@ func (client *Client) DeleteTemplate(templateID string) error {
 type ValidateTemplateBody struct {
 	Subject                    string
 	TextBody                   string
-	HTMLBody                   string `json:"HtmlBody"`
+	HTMLBody                   string `json:"HTMLBody"`
 	TestRenderModel            map[string]interface{}
 	InlineCSSForHTMLTestRender bool `json:"InlineCssForHtmlTestRender"`
 }
@@ -138,7 +138,7 @@ type ValidateTemplateBody struct {
 // ValidateTemplateResponse contains information as to how the validation went
 type ValidateTemplateResponse struct {
 	AllContentIsValid      bool
-	HTMLBody               Validation `json:"HtmlBody"`
+	HTMLBody               Validation `json:"HTMLBody"`
 	TextBody               Validation
 	Subject                Validation
 	SuggestedTemplateModel map[string]interface{}
@@ -175,14 +175,14 @@ func (client *Client) ValidateTemplate(validateTemplateBody ValidateTemplateBody
 
 // TemplatedEmail is used to send an email via a template
 type TemplatedEmail struct {
-	// TemplateId: REQUIRED if TemplateAlias is not specified. - The template id to use when sending this message.
-	TemplateId int64 `json:",omitempty"`
-	// TemplateAlias: REQUIRED if TemplateId is not specified. - The template alias to use when sending this message.
+	// TemplateID: REQUIRED if TemplateAlias is not specified. - The template id to use when sending this message.
+	TemplateID int64 `json:"TemplateId,omitempty"`
+	// TemplateAlias: REQUIRED if TemplateID is not specified. - The template alias to use when sending this message.
 	TemplateAlias string `json:",omitempty"`
 	// TemplateModel: The model to be applied to the specified template to generate HtmlBody, TextBody, and Subject.
 	TemplateModel map[string]interface{} `json:",omitempty"`
-	// InlineCss: By default, if the specified template contains an HTMLBody, we will apply the style blocks as inline attributes to the rendered HTML content. You may opt-out of this behavior by passing false for this request field.
-	InlineCss bool `json:",omitempty"`
+	// InlineCSS: By default, if the specified template contains an HtmlBody, we will apply the style blocks as inline attributes to the rendered HTML content. You may opt-out of this behavior by passing false for this request field.
+	InlineCSS bool `json:"InlineCSS,omitempty"`
 	// From: The sender email address. Must have a registered and confirmed Sender Signature.
 	From string `json:",omitempty"`
 	// To: REQUIRED Recipient email address. Multiple addresses are comma separated. Max 50.
@@ -203,7 +203,7 @@ type TemplatedEmail struct {
 	Attachments []Attachment `json:",omitempty"`
 }
 
-// SendTemplatedEmail sends an email using a template (TemplateId)
+// SendTemplatedEmail sends an email using a template (TemplateID)
 func (client *Client) SendTemplatedEmail(email TemplatedEmail) (EmailResponse, error) {
 	res := EmailResponse{}
 	err := client.doRequest(parameters{
@@ -215,7 +215,7 @@ func (client *Client) SendTemplatedEmail(email TemplatedEmail) (EmailResponse, e
 	return res, err
 }
 
-// SendTemplatedEmail sends batch email using a template (TemplateId)
+// SendTemplatedEmailBatch sends batch email using a template (TemplateID)
 func (client *Client) SendTemplatedEmailBatch(emails []TemplatedEmail) ([]EmailResponse, error) {
 	var res []EmailResponse
 	var formatEmails = map[string]interface{}{
