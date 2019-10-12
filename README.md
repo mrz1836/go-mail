@@ -31,17 +31,19 @@ $ dep ensure -update -v
 
 ### Package Dependencies
 - keighl's [postmark](https://github.com/keighl/postmark)
+- mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
 
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
 
 ### Supported Service Providers
 - [Mandrill](https://mandrillapp.com/api/docs/)
-- Postmark
-- AWS SES
+- [Postmark](https://postmarkapp.com/developer)
+- [AWS SES](https://docs.aws.amazon.com/ses/)
 
 ### Features
-- todo
+- Uses MrZ's [go-logger](https://github.com/mrz1836/go-logger) for either local or remote logging via [LogEntries](https://logentries.com/)
+- Supports multiple service providers
 
 ## Examples & Tests
 All unit tests and [examples](examples/examples.go) run via [Travis CI](https://travis-ci.com/mrz1836/go-mail) and uses [Go version 1.13.x](https://golang.org/doc/go1.13). View the [deployment configuration file](.travis.yml).
@@ -96,6 +98,8 @@ func main() {
 ## Contributing
 
 This project uses keighl's [postmark](https://github.com/keighl/postmark) package.
+
+This project uses mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package.
 
 View the [contributing guidelines](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
