@@ -35,6 +35,11 @@ $ dep ensure -update -v
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
 
+### Supported Service Providers
+- [Mandrill](https://mandrillapp.com/api/docs/)
+- Postmark
+- AWS SES
+
 ### Features
 - todo
 
