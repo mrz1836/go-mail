@@ -46,12 +46,12 @@ func main() {
 	// Create a new email
 	email := mail.NewEmail()
 
-	email.PlainTextContent = "This is a test alert from the backend system using plain-text"
-	email.HTMLContent = "<html><body>This is a test alert from the backend system using <b>HTML</b></body></html>"
+	email.PlainTextContent = "This is a go-mail test email using plain-text"
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
 	email.Recipients = []string{os.Getenv("EMAIL_TEST_TO_RECIPIENT")}
 	email.RecipientsCc = []string{os.Getenv("EMAIL_TEST_CC_RECIPIENT")}
 	email.RecipientsBcc = []string{os.Getenv("EMAIL_TEST_BCC_RECIPIENT")}
-	email.Subject = "alert broadcast system - test message"
+	email.Subject = "testing go-mail package - test message"
 	email.Tags = []string{"admin_alert"}
 	email.Important = true
 

@@ -90,10 +90,30 @@ Basic implementation:
 package main
 
 import (
+	"github.com/mrz1836/go-mail"
 )
 
 func main() {
 
+    // Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = "example.com"
+
+	// Provider
+	mail.MandrillAPIKey = "1234567"
+
+	// Start the service
+	mail.StartUp()
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+    email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
+    email.Recipients = []string{"jack@example.com"}
+    email.Subject = "testing go-mail package - test message"
+
+    _ := mail.SendEmail(email, gomail.Mandrill)
 }
 ```
 
