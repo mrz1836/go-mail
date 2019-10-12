@@ -10,7 +10,7 @@ import (
 	"github.com/mattbaird/gochimp"
 )
 
-// sendWithMandrill sends an email using Mandrill service
+// sendWithMandrill sends an email using the Mandrill service
 func (m *MailService) sendWithMandrill(email *Email) (err error) {
 
 	// Get the signing domain from the from address
@@ -20,12 +20,6 @@ func (m *MailService) sendWithMandrill(email *Email) (err error) {
 		signDomain = m.FromDomain
 	} else {
 		signDomain = sign[1]
-	}
-
-	// No to recipients
-	if len(email.Recipients) == 0 {
-		err = fmt.Errorf("no TO recipients found")
-		return
 	}
 
 	// Create the Mandrill Email
@@ -104,7 +98,7 @@ func (m *MailService) sendWithMandrill(email *Email) (err error) {
 
 	// Execute the send
 	var sendResponse []gochimp.SendResponse
-	sendResponse, err = m.mandrillAPI.MessageSend(message, false)
+	sendResponse, err = m.mandrillService.MessageSend(message, false)
 	if err != nil {
 		return
 	}
