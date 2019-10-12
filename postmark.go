@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/keighl/postmark"
 	"github.com/mrz1836/go-logger"
+	"github.com/mrz1836/postmark"
 )
 
 // sendWithPostmark sends an email using the postmark service
@@ -22,14 +22,15 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 		Subject:    email.Subject,
 		TextBody:   email.PlainTextContent,
 		TrackOpens: email.TrackOpens,
+		TrackLinks: "None",
+	}
 
-		//TrackLinks: todo: this needs to be added
+	// Set the link tracking
+	if email.TrackClicks {
+		postmarkEmail.TrackLinks = "HtmlAndText"
 	}
 
 	// Warn about features that are set but not available //todo: remove once enabled
-	if email.TrackClicks {
-		logger.Data(2, logger.WARN, "track clicks is enabled, but postmark does not offer this feature")
-	}
 	if email.AutoText {
 		logger.Data(2, logger.WARN, "auto text is enabled, but postmark does not offer this feature")
 	}
