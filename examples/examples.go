@@ -4,11 +4,10 @@ Package main is examples using the go-mail package
 package main
 
 import (
-	"fmt"
+	"log"
 	"os"
 	"strconv"
 
-	"github.com/mrz1836/go-logger"
 	"github.com/mrz1836/go-mail"
 )
 
@@ -29,9 +28,13 @@ func basicExample() {
 
 	// Provider
 	mail.MandrillAPIKey = os.Getenv("EMAIL_MANDRILL_KEY")
+	provider := gomail.Mandrill
 
 	// Start the service
-	mail.StartUp()
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+	}
 
 	// Create and send a basic email
 	email := mail.NewEmail()
@@ -39,13 +42,13 @@ func basicExample() {
 	email.Recipients = []string{os.Getenv("EMAIL_TEST_TO_RECIPIENT")}
 	email.Subject = "testing go-mail package - test basicExample"
 
-	err := mail.SendEmail(email, gomail.Mandrill)
+	err = mail.SendEmail(email, provider)
 	if err != nil {
-		logger.Data(2, logger.ERROR, fmt.Sprintf("error in SendEmail: %s using provider %x", err.Error(), gomail.Mandrill))
+		log.Printf("error in SendEmail: %s using provider %x", err.Error(), provider)
 	}
 
 	// Congrats!
-	logger.Data(2, logger.DEBUG, "all emails sent via basicExample()")
+	log.Printf("all emails sent via basicExample()")
 }
 
 // fullExample is using the most amount of features
@@ -73,11 +76,16 @@ func fullExample() {
 	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")          //johndoe
 	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          //secretPassword
 
-	// Startup the services
-	mail.StartUp()
+	provider := gomail.SMTP // AwsSes Mandrill Postmark
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+	}
 
 	// Available services given the config above
-	logger.Printf("available service providers: %x", mail.AvailableProviders)
+	log.Printf("available service providers: %x", mail.AvailableProviders)
 
 	// Create a new email
 	email := mail.NewEmail()
@@ -92,20 +100,20 @@ func fullExample() {
 	email.Important = true
 
 	// Add an attachment
-	f, err := os.Open("test-attachment-file.txt")
+	var f *os.File
+	f, err = os.Open("test-attachment-file.txt")
 	if err != nil {
-		logger.Data(2, logger.DEBUG, "unable to load file for attachment")
+		log.Printf("unable to load file for attachment")
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
 
 	// Send the email (basic example using one provider)
-	provider := gomail.SMTP // AwsSes Mandrill Postmark
 	err = mail.SendEmail(email, provider)
 	if err != nil {
-		logger.Data(2, logger.ERROR, fmt.Sprintf("error in SendEmail: %s using provider %x", err.Error(), provider))
+		log.Printf("error in SendEmail: %s using provider %x", err.Error(), provider)
 	}
 
 	// Congrats!
-	logger.Data(2, logger.DEBUG, "all emails sent via fullExample()")
+	log.Printf("all emails sent via fullExample()")
 }

@@ -2,9 +2,9 @@ package gomail
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/domodwyer/mailyak"
-	"github.com/mrz1836/go-logger"
 )
 
 // sendWithSMTP sends an email using the smtp service
@@ -63,13 +63,13 @@ func (m *MailService) sendWithSMTP(email *Email) (err error) {
 
 	// Warn about features that are set but not available
 	if email.TrackClicks {
-		logger.Data(2, logger.WARN, "track clicks is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track clicks is enabled, but aws ses does not offer this feature")
 	}
 	if email.TrackOpens {
-		logger.Data(2, logger.WARN, "track opens is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track opens is enabled, but aws ses does not offer this feature")
 	}
 	if email.AutoText {
-		logger.Data(2, logger.WARN, "auto text is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: auto text is enabled, but aws ses does not offer this feature")
 	}
 
 	// Send via smtp

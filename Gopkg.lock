@@ -18,14 +18,6 @@
   revision = "a267553896d1cbd0ccfc259ad5442e62bdc3d30d"
 
 [[projects]]
-  digest = "1:e9752813079877950aa96e8e3771e22771b49be653576000bddc5da78444e215"
-  name = "github.com/mrz1836/go-logger"
-  packages = ["."]
-  pruneopts = "NUT"
-  revision = "b58212dc2d5fef02ef3281d8b88c01ba96cb9324"
-  version = "v0.0.4"
-
-[[projects]]
   digest = "1:1bc0a207120a77ad250e1693918055ea0d9f6331d302204ed92c069c369cf27d"
   name = "github.com/mrz1836/postmark"
   packages = ["."]
@@ -47,7 +39,6 @@
   input-imports = [
     "github.com/domodwyer/mailyak",
     "github.com/mattbaird/gochimp",
-    "github.com/mrz1836/go-logger",
     "github.com/mrz1836/postmark",
     "github.com/sourcegraph/go-ses",
   ]

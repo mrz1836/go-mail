@@ -5,7 +5,6 @@ import (
 	"net/smtp"
 
 	"github.com/mattbaird/gochimp"
-	"github.com/mrz1836/go-logger"
 	"github.com/mrz1836/postmark"
 	"github.com/sourcegraph/go-ses"
 )
@@ -67,38 +66,34 @@ func containsServiceProvider(s []ServiceProvider, e ServiceProvider) bool {
 }
 
 // StartUp is fired once to load the email service
-func (m *MailService) StartUp() {
+func (m *MailService) StartUp() (err error) {
 
-	// Check the basics
+	// Required to have user and domain
 	if len(m.FromUsername) == 0 {
-		logger.Fatalln("missing required from_username field")
+		err = fmt.Errorf("missing required field: from_username")
+		return
 	} else if len(m.FromDomain) == 0 {
-		logger.Fatalln("missing required from_domain field")
-	} else if len(m.FromName) == 0 {
-		logger.Fatalln("missing required from_name field")
+		err = fmt.Errorf("missing required field: from_domain")
+		return
 	}
 
+	// Set any defaults
+	m.awsSesService.Endpoint = awsSesDefaultEndpoint
+
 	// If the key is set, try loading the service
-	if len(m.MandrillAPIKey) == 0 {
-		logger.Data(2, logger.DEBUG, "mandrill credentials not set, skipping mandrill...")
-	} else {
-		var err error
+	if len(m.MandrillAPIKey) > 0 {
+
 		m.mandrillService, err = gochimp.NewMandrill(m.MandrillAPIKey)
 		if err != nil {
-			logger.Fatalln(fmt.Sprintf("error instantiating Mandrill API: %s", err))
+			return
 		}
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, Mandrill)
 	}
 
-	// Set defaults
-	m.awsSesService.Endpoint = awsSesDefaultEndpoint
-
 	// If the AWS SES credentials exist
-	if len(m.AwsSesAccessID) == 0 || len(m.AwsSesSecretKey) == 0 {
-		logger.Data(2, logger.DEBUG, "aws ses credentials not set, skipping ses...")
-	} else {
+	if len(m.AwsSesAccessID) > 0 && len(m.AwsSesSecretKey) > 0 {
 
 		// Set the credentials
 		m.awsSesService.AccessKeyID = m.AwsSesAccessID
@@ -112,9 +107,7 @@ func (m *MailService) StartUp() {
 	}
 
 	// If the Postmark credentials exist
-	if len(m.PostmarkServerToken) == 0 {
-		logger.Data(2, logger.DEBUG, "postmark credentials not set, skipping postmark...")
-	} else {
+	if len(m.PostmarkServerToken) > 0 {
 		m.postmarkService = postmark.NewClient(m.PostmarkServerToken, "")
 
 		// Add to the list of available providers
@@ -122,11 +115,9 @@ func (m *MailService) StartUp() {
 	}
 
 	// If the smtp credentials exist
-	if len(m.SMTPHost) == 0 || len(m.SMTPUsername) == 0 || len(m.SMTPPassword) == 0 {
-		logger.Data(2, logger.DEBUG, "smtp credentials not set, skipping smtp...")
-	} else {
+	if len(m.SMTPHost) > 0 && len(m.SMTPUsername) > 0 && len(m.SMTPPassword) > 0 {
 
-		// set the credentials
+		// Set the credentials
 		m.smtpAuth = smtp.PlainAuth("", m.SMTPUsername, m.SMTPPassword, m.SMTPHost)
 
 		// Add to the list of available providers
@@ -135,6 +126,8 @@ func (m *MailService) StartUp() {
 
 	// No service providers found
 	if len(m.AvailableProviders) == 0 {
-		logger.Fatalln("attempted to startup the email service however there's no available service provider")
+		err = fmt.Errorf("attempted to startup the email service provider(s) however there's no available service provider")
 	}
+
+	return
 }

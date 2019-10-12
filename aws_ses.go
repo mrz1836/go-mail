@@ -3,10 +3,10 @@ package gomail
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/domodwyer/mailyak"
-	"github.com/mrz1836/go-logger"
 )
 
 // sendWithAwsSes sends an email using the AWS SES service
@@ -65,13 +65,13 @@ func (m *MailService) sendWithAwsSes(email *Email) (err error) {
 
 	// Warn about features that are set but not available
 	if email.TrackClicks {
-		logger.Data(2, logger.WARN, "track clicks is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track clicks is enabled, but aws ses does not offer this feature")
 	}
 	if email.TrackOpens {
-		logger.Data(2, logger.WARN, "track opens is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track opens is enabled, but aws ses does not offer this feature")
 	}
 	if email.AutoText {
-		logger.Data(2, logger.WARN, "auto text is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: auto text is enabled, but aws ses does not offer this feature")
 	}
 
 	// Create the email buffer and pass to the ses service

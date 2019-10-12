@@ -33,7 +33,6 @@ $ dep ensure -update -v
 - domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
 - keighl's [postmark](https://github.com/mrz1836/postmark)
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
-- mrz1836's [go-logger](https://github.com/mrz1836/go-logger)
 - sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
 
 ## Documentation
@@ -105,7 +104,7 @@ func main() {
 	mail.MandrillAPIKey = "1234567"
 
 	// Start the service
-	mail.StartUp()
+	_ = mail.StartUp()
 
 	// Create and send a basic email
 	email := mail.NewEmail()
