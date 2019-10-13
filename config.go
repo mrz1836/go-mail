@@ -36,6 +36,7 @@ type MailService struct {
 	AwsSesAccessID      string            `json:"aws_ses_access_id" mapstructure:"aws_ses_access_id"`         // aws iam access id for ses service
 	AwsSesEndpoint      string            `json:"aws_ses_endpoint" mapstructure:"aws_ses_endpoint"`           // ie: https://email.us-east-1.amazonaws.com
 	AwsSesSecretKey     string            `json:"aws_ses_secret_key" mapstructure:"aws_ses_secret_key"`       // aws iam secret key for corresponding access id
+	EmailCSS            []byte            `json:"email_css" mapstructure:"email_css"`                         // default css pre-parsed into bytes
 	FromDomain          string            `json:"from_domain" mapstructure:"from_domain"`                     // ie: example.com
 	FromName            string            `json:"from_name" mapstructure:"from_name"`                         // ie: No Reply
 	FromUsername        string            `json:"from_username" mapstructure:"from_username"`                 // ie: no-reply

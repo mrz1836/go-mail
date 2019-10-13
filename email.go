@@ -15,6 +15,7 @@ import (
 type Email struct {
 	Attachments      []Attachment `json:"attachments" mapstructure:"attachments"`
 	AutoText         bool         `json:"auto_text" mapstructure:"auto_text"`
+	CSS              []byte       `json:"css" mapstructure:"css"`
 	FromAddress      string       `json:"from_address" mapstructure:"from_address"`
 	FromName         string       `json:"from_name" mapstructure:"from_name"`
 	HTMLContent      string       `json:"html_content" mapstructure:"html_content"`
@@ -93,9 +94,9 @@ func (e *Email) ParseTemplate(filename string) (parsed *template.Template, err e
 	return parsed.ParseFiles(filename)
 }
 
-// ParseTemplateWithStyles parse the templates with inline style injection (html)
+// ParseHTMLTemplate parse the template with inline style injection (html)
 // This method returns the template which should be stored in memory for quick access
-func (e *Email) ParseTemplateWithStyles(htmlLocation string, emailStyles []byte) (htmlTemplate *template.Template, err error) {
+func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.Template, err error) {
 
 	// Read HTML template file
 	var tempBytes []byte
@@ -106,10 +107,10 @@ func (e *Email) ParseTemplateWithStyles(htmlLocation string, emailStyles []byte)
 	}
 
 	// Do we have styles to replace?
-	if bytes.Contains(tempBytes, []byte("{{.Styles}}")) {
+	if bytes.Contains(tempBytes, []byte("{{.Styles}}")) && len(e.CSS) > 0 {
 
 		// Inject styles
-		tempBytes = bytes.Replace(tempBytes, []byte("{{.Styles}}"), emailStyles, -1)
+		tempBytes = bytes.Replace(tempBytes, []byte("{{.Styles}}"), e.CSS, -1)
 		var tempString string
 		tempString, err = inliner.Inline(string(tempBytes))
 		if err != nil {
@@ -124,7 +125,8 @@ func (e *Email) ParseTemplateWithStyles(htmlLocation string, emailStyles []byte)
 		_, err = htmlTemplate.Parse(tempString)
 
 	} else {
-		// Set the html template (didn't find styles
+
+		// Either no style tag or no CSS set on email
 		htmlTemplate, err = e.ParseTemplate(htmlLocation)
 	}
 
@@ -138,11 +140,12 @@ func (m *MailService) NewEmail() (email *Email) {
 	email = new(Email)
 	email.AutoText = m.AutoText
 	email.FromAddress = m.FromUsername + "@" + m.FromDomain
+	email.CSS = m.EmailCSS
 	email.FromName = m.FromName
 	email.Important = m.Important
+	email.ReplyToAddress = email.FromAddress
 	email.TrackClicks = m.TrackClicks
 	email.TrackOpens = m.TrackOpens
-	email.ReplyToAddress = email.FromAddress
 
 	return
 }
