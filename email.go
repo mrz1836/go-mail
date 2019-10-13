@@ -49,17 +49,22 @@ func (e *Email) AddAttachment(name, fileType string, reader io.Reader) {
 	})
 }
 
-// ApplyTemplates will take the template files and process them with the email data
-func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *template.Template) (err error) {
+// ApplyTemplates will take the template files and process them with the email dataStruct (can be e or overridden)
+func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *template.Template, emailData interface{}) (err error) {
 
 	// Start the buffer
 	var buffer bytes.Buffer
+
+	// Use the default email if nil is given
+	if emailData == nil {
+		emailData = e
+	}
 
 	// Do we have an html template?
 	if htmlTemplate != nil {
 
 		// Read the struct into the HTML buffer
-		err = htmlTemplate.ExecuteTemplate(&buffer, htmlTemplate.Name(), e)
+		err = htmlTemplate.ExecuteTemplate(&buffer, htmlTemplate.Name(), emailData)
 		if err != nil {
 			return
 		}
@@ -75,7 +80,7 @@ func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *te
 	if textTemplate != nil {
 
 		// Read the struct into the text buffer
-		err = textTemplate.ExecuteTemplate(&buffer, textTemplate.Name(), e)
+		err = textTemplate.ExecuteTemplate(&buffer, textTemplate.Name(), emailData)
 		if err != nil {
 			return
 		}
