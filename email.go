@@ -169,7 +169,7 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 			err = fmt.Errorf("email is missing content (plain & html)")
 			return
 		} else if len(email.Recipients) == 0 {
-			err = fmt.Errorf("email is a recipient")
+			err = fmt.Errorf("email is missing a recipient")
 			return
 		} else if len(email.Recipients) > m.MaxToRecipients {
 			err = fmt.Errorf("max TO recipient limit of %d reached: %d", m.MaxToRecipients, len(email.Recipients))
