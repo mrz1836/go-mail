@@ -44,11 +44,13 @@ You can view the generated [documentation here](https://godoc.org/github.com/mrz
 
 ### Features
 - Supports multiple service providers _(below)_
+- Support basic [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
 - Plain-text and HTML content
 - Multiple file attachments
 - Open & click tracking _(provider dependant)_
 - Inject css into html content
 - Basic template support
+- Max restrictions on To, CC and BCC
 
 ### Supported Service Providers
 - [AWS SES](https://docs.aws.amazon.com/ses/)

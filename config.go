@@ -42,6 +42,9 @@ type MailService struct {
 	FromUsername        string            `json:"from_username" mapstructure:"from_username"`                 // ie: no-reply
 	Important           bool              `json:"important" mapstructure:"important"`                         // whether or not this message is important, and should be delivered ahead of non-important messages
 	MandrillAPIKey      string            `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`           // mandrill api key
+	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"`       // max amount for BCC
+	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`         // max amount for CC
+	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`         // max amount for TO
 	PostmarkServerToken string            `json:"postmark_server_token" mapstructure:"postmark_server_token"` // ie: abc123...
 	SMTPHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
 	SMTPPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
@@ -80,6 +83,9 @@ func (m *MailService) StartUp() (err error) {
 
 	// Set any defaults
 	m.awsSesService.Endpoint = awsSesDefaultEndpoint
+	m.MaxToRecipients = maxToRecipients
+	m.MaxCcRecipients = maxCcRecipients
+	m.MaxBccRecipients = maxBccRecipients
 
 	// If the key is set, try loading the service
 	if len(m.MandrillAPIKey) > 0 {

@@ -166,22 +166,22 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 		} else if len(email.Recipients) == 0 {
 			err = fmt.Errorf("email is a recipient")
 			return
-		} else if len(email.Recipients) > maxToRecipients {
-			err = fmt.Errorf("max TO recipient limit of %d reached: %d", maxToRecipients, len(email.Recipients))
+		} else if len(email.Recipients) > m.MaxToRecipients {
+			err = fmt.Errorf("max TO recipient limit of %d reached: %d", m.MaxToRecipients, len(email.Recipients))
 			return
-		} else if len(email.RecipientsCc) > maxCcRecipients {
-			err = fmt.Errorf("max CC recipient limit of %d reached: %d", maxCcRecipients, len(email.RecipientsCc))
+		} else if len(email.RecipientsCc) > m.MaxCcRecipients {
+			err = fmt.Errorf("max CC recipient limit of %d reached: %d", m.MaxCcRecipients, len(email.RecipientsCc))
 			return
-		} else if len(email.RecipientsBcc) > maxBccRecipients {
-			err = fmt.Errorf("max BCC recipient limit of %d reached: %d", maxBccRecipients, len(email.RecipientsBcc))
+		} else if len(email.RecipientsBcc) > m.MaxBccRecipients {
+			err = fmt.Errorf("max BCC recipient limit of %d reached: %d", m.MaxBccRecipients, len(email.RecipientsBcc))
 			return
 		}
 
 		// Send using given provider
-		if provider == Mandrill {
-			err = m.sendWithMandrill(email)
-		} else if provider == AwsSes {
+		if provider == AwsSes {
 			err = m.sendWithAwsSes(email)
+		} else if provider == Mandrill {
+			err = m.sendWithMandrill(email)
 		} else if provider == Postmark {
 			err = m.sendWithPostmark(email)
 		} else if provider == SMTP {
