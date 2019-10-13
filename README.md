@@ -43,9 +43,11 @@ You can view the generated [documentation here](https://godoc.org/github.com/mrz
 
 ### Features
 - Supports multiple service providers _(below)_
-- Supports plain-text and HTML
-- Supports file attachments
-- Supports open & click tracking _(provider dependant)_
+- Plain-text and HTML content
+- Multiple file attachments
+- Open & click tracking _(provider dependant)_
+- Inject css into html content
+- Basic template support
 
 ### Supported Service Providers
 - [AWS SES](https://docs.aws.amazon.com/ses/)
