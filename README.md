@@ -37,6 +37,7 @@ $ dep ensure -update -v
 - keighl's [postmark](https://github.com/mrz1836/postmark)
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
 - sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
+- aymerick's [douceur](https://github.com/aymerick/douceur)
 
 ## Documentation
 You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
@@ -132,6 +133,7 @@ This project uses:
 - keighl's [postmark](https://github.com/mrz1836/postmark) package
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package
 - sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses) package
+- aymerick's [douceur](https://github.com/aymerick/douceur) package
 
 View the [contributing guidelines](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
