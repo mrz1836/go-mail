@@ -21,15 +21,9 @@
 
 ## Installation
 
-**go-mail** requires a [supported release of Go](https://golang.org/doc/devel/release.html#policy) and [dep](https://github.com/golang/dep).
+**go-mail** requires a [supported release of Go](https://golang.org/doc/devel/release.html#policy).
 ```bash
 $ go get -u github.com/mrz1836/go-mail
-```
-
-Updating dependencies in **go-mail**:
-```bash
-$ cd ../go-mail
-$ dep ensure -update -v
 ```
 
 ### Package Dependencies
