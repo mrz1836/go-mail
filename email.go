@@ -64,8 +64,7 @@ func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *te
 	if htmlTemplate != nil {
 
 		// Read the struct into the HTML buffer
-		err = htmlTemplate.ExecuteTemplate(&buffer, htmlTemplate.Name(), emailData)
-		if err != nil {
+		if err = htmlTemplate.ExecuteTemplate(&buffer, htmlTemplate.Name(), emailData); err != nil {
 			return
 		}
 
@@ -80,8 +79,7 @@ func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *te
 	if textTemplate != nil {
 
 		// Read the struct into the text buffer
-		err = textTemplate.ExecuteTemplate(&buffer, textTemplate.Name(), emailData)
-		if err != nil {
+		if err = textTemplate.ExecuteTemplate(&buffer, textTemplate.Name(), emailData); err != nil {
 			return
 		}
 
@@ -105,9 +103,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 
 	// Read HTML template file
 	var tempBytes []byte
-	tempBytes, err = ioutil.ReadFile(htmlLocation)
-	if err != nil {
-		err = fmt.Errorf("")
+	if tempBytes, err = ioutil.ReadFile(htmlLocation); err != nil {
 		return
 	}
 
@@ -117,14 +113,12 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 		// Inject styles
 		tempBytes = bytes.Replace(tempBytes, []byte("{{.Styles}}"), e.CSS, -1)
 		var tempString string
-		tempString, err = inliner.Inline(string(tempBytes))
-		if err != nil {
+		if tempString, err = inliner.Inline(string(tempBytes)); err != nil {
 			return
 		}
 
 		// Replace the string with template
-		htmlTemplate, err = e.ParseTemplate(htmlLocation)
-		if err != nil {
+		if htmlTemplate, err = e.ParseTemplate(htmlLocation); err != nil {
 			return
 		}
 		_, err = htmlTemplate.Parse(tempString)

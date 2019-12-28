@@ -76,8 +76,7 @@ func (m *MailService) sendWithAwsSes(email *Email) (err error) {
 
 	// Create the email buffer and pass to the ses service
 	var buf *bytes.Buffer
-	buf, err = mail.MimeBuf()
-	if err != nil {
+	if buf, err = mail.MimeBuf(); err != nil {
 		return err
 	}
 

@@ -68,8 +68,7 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 			// Read all content from the attachment
 			reader := bufio.NewReader(attachment.FileReader)
 			var content []byte
-			content, err = ioutil.ReadAll(reader)
-			if err != nil {
+			if content, err = ioutil.ReadAll(reader); err != nil {
 				return
 			}
 
@@ -94,8 +93,7 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 
 	// Send the email
 	var resp postmark.EmailResponse
-	resp, err = m.postmarkService.SendEmail(postmarkEmail)
-	if err != nil {
+	if resp, err = m.postmarkService.SendEmail(postmarkEmail); err != nil {
 		return
 	}
 

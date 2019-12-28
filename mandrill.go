@@ -82,8 +82,7 @@ func (m *MailService) sendWithMandrill(email *Email) (err error) {
 			// Read all content from the attachment
 			reader := bufio.NewReader(attachment.FileReader)
 			var content []byte
-			content, err = ioutil.ReadAll(reader)
-			if err != nil {
+			if content, err = ioutil.ReadAll(reader); err != nil {
 				return
 			}
 
@@ -98,8 +97,7 @@ func (m *MailService) sendWithMandrill(email *Email) (err error) {
 
 	// Execute the send
 	var sendResponse []gochimp.SendResponse
-	sendResponse, err = m.mandrillService.MessageSend(message, false)
-	if err != nil {
+	if sendResponse, err = m.mandrillService.MessageSend(message, false); err != nil {
 		return
 	}
 
