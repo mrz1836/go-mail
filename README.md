@@ -1,6 +1,7 @@
 # go-mail
 **go-mail** is a lightweight email package with multi-provider support (ses, mandrill, postmark)
 
+[![Go](https://img.shields.io/github/go-mod/go-version/mrz1836/go-mail)](https://golang.org/)
 [![Build Status](https://travis-ci.com/mrz1836/go-mail.svg?branch=master)](https://travis-ci.com/mrz1836/go-mail)
 [![Report](https://goreportcard.com/badge/github.com/mrz1836/go-mail?style=flat&v=1)](https://goreportcard.com/report/github.com/mrz1836/go-mail)
 [![Codacy Badge](https://api.codacy.com/project/badge/Grade/52bfcc447ee24c29a2a3fb65c53a4de3)](https://www.codacy.com/app/mrz1818/go-mail?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=mrz1836/go-mail&amp;utm_campaign=Badge_Grade)
