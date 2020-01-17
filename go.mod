@@ -11,5 +11,5 @@ require (
 	github.com/mattbaird/gochimp v0.0.0-20180111040707-a267553896d1
 	github.com/mrz1836/postmark v1.2.3
 	github.com/sourcegraph/go-ses v0.0.0-20160405160939-6bd8d17cf7c1
-	golang.org/x/net v0.0.0-20191209160850-c0dbc17a3553 // indirect
+	golang.org/x/net v0.0.0-20200114155413-6afb5195e5aa // indirect
 )
