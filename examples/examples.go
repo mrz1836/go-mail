@@ -8,7 +8,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/mrz1836/go-mail"
+	gomail "github.com/mrz1836/go-mail"
 )
 
 func main() {
@@ -58,23 +58,23 @@ func fullExample() {
 	mail := new(gomail.MailService)
 	mail.FromName = "No Reply"
 	mail.FromUsername = "no-reply"
-	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN") //example.com
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN") // example.com
 
 	// Mandrill
-	mail.MandrillAPIKey = os.Getenv("EMAIL_MANDRILL_KEY") //aOfw3WU...
+	mail.MandrillAPIKey = os.Getenv("EMAIL_MANDRILL_KEY") // aOfw3WU...
 
 	// AWS SES
-	mail.AwsSesAccessID = os.Getenv("EMAIL_AWS_SES_ACCESS_ID")   //AKIAY...
-	mail.AwsSesSecretKey = os.Getenv("EMAIL_AWS_SES_SECRET_KEY") //tOpw3WU...
+	mail.AwsSesAccessID = os.Getenv("EMAIL_AWS_SES_ACCESS_ID")   // AKIAY...
+	mail.AwsSesSecretKey = os.Getenv("EMAIL_AWS_SES_SECRET_KEY") // tOpw3WU...
 
 	// Postmark
-	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN") //AKIAY...
+	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN") // AKIAY...
 
 	// SMTP
-	mail.SMTPHost = os.Getenv("EMAIL_SMTP_HOST")                  //example.com
-	mail.SMTPPort, _ = strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT")) //25
-	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")          //johndoe
-	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          //secretPassword
+	mail.SMTPHost = os.Getenv("EMAIL_SMTP_HOST")                  // example.com
+	mail.SMTPPort, _ = strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT")) // 25
+	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")          // johndoe
+	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          // secretPassword
 
 	provider := gomail.SMTP // AwsSes Mandrill Postmark
 
