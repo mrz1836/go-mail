@@ -4,10 +4,8 @@
 [![Go](https://img.shields.io/github/go-mod/go-version/mrz1836/go-mail)](https://golang.org/)
 [![Build Status](https://travis-ci.com/mrz1836/go-mail.svg?branch=master)](https://travis-ci.com/mrz1836/go-mail)
 [![Report](https://goreportcard.com/badge/github.com/mrz1836/go-mail?style=flat&v=1)](https://goreportcard.com/report/github.com/mrz1836/go-mail)
-[![Codacy Badge](https://api.codacy.com/project/badge/Grade/52bfcc447ee24c29a2a3fb65c53a4de3)](https://www.codacy.com/app/mrz1818/go-mail?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=mrz1836/go-mail&amp;utm_campaign=Badge_Grade)
 [![Release](https://img.shields.io/github/release-pre/mrz1836/go-mail.svg?style=flat&v=1)](https://github.com/mrz1836/go-mail/releases)
-[![standard-readme compliant](https://img.shields.io/badge/standard--readme-OK-green.svg?style=flat)](https://github.com/RichardLitt/standard-readme)
-[![GoDoc](https://godoc.org/github.com/mrz1836/go-mail?status.svg&style=flat)](https://godoc.org/github.com/mrz1836/go-mail)
+[![GoDoc](https://godoc.org/github.com/mrz1836/go-mail?status.svg&style=flat)](https://pkg.go.dev/github.com/mrz1836/go-mail)
 
 ## Table of Contents
 - [Installation](#installation)
@@ -27,15 +25,8 @@
 $ go get -u github.com/mrz1836/go-mail
 ```
 
-### Package Dependencies
-- domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
-- keighl's [postmark](https://github.com/mrz1836/postmark)
-- mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
-- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
-- aymerick's [douceur](https://github.com/aymerick/douceur)
-
 ## Documentation
-You can view the generated [documentation here](https://godoc.org/github.com/mrz1836/go-mail).
+You can view the generated [documentation here](https://pkg.go.dev/github.com/mrz1836/go-mail).
 
 ### Features
 - Supports multiple service providers _(below)_
@@ -47,38 +38,89 @@ You can view the generated [documentation here](https://godoc.org/github.com/mrz
 - Basic template support
 - Max restrictions on To, CC and BCC
 
-### Supported Service Providers
+<details>
+<summary><strong><code>Supported Service Providers</code></strong></summary>
+
 - [AWS SES](https://docs.aws.amazon.com/ses/)
 - [Mandrill](https://mandrillapp.com/api/docs/)
 - [Postmark](https://postmarkapp.com/developer)
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
+</details>
+
+<details>
+<summary><strong><code>Package Dependencies</code></strong></summary>
+
+- domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
+- keighl's [postmark](https://github.com/mrz1836/postmark)
+- mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
+- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
+- aymerick's [douceur](https://github.com/aymerick/douceur)
+</details>
+
+<details>
+<summary><strong><code>Library Deployment</code></strong></summary>
+
+[goreleaser](https://github.com/goreleaser/goreleaser) for easy binary or library deployment to Github and can be installed via: `brew install goreleaser`.
+
+The [.goreleaser.yml](.goreleaser.yml) file is used to configure [goreleaser](https://github.com/goreleaser/goreleaser).
+
+Use `make release-snap` to create a snapshot version of the release, and finally `make release` to ship to production.
+</details>
+
+<details>
+<summary><strong><code>Makefile Commands</code></strong></summary>
+
+View all `makefile` commands
+```bash
+$ make help
+```
+
+List of all current commands:
+```text
+all                            Runs test, install, clean, docs
+bench                          Run all benchmarks in the Go application
+clean                          Remove previous builds and any test cache data
+clean-mods                     Remove all the Go mod cache
+coverage                       Shows the test coverage
+godocs                         Sync the latest tag with GoDocs
+help                           Show all make commands available
+lint                           Run the Go lint application
+release                        Full production release (creates release in Github)
+release-test                   Full production test release (everything except deploy)
+release-snap                   Test the full release (build binaries)
+tag                            Generate a new tag and push (IE: make tag version=0.0.0)
+tag-remove                     Remove a tag if found (IE: make tag-remove version=0.0.0)
+tag-update                     Update an existing tag to current commit (IE: make tag-update version=0.0.0)
+test                           Runs vet, lint and ALL tests
+test-short                     Runs vet, lint and tests (excludes integration tests)
+update                         Update all project dependencies
+update-releaser                Update the goreleaser application
+vet                            Run the Go vet application
+```
+</details>
 
 ## Examples & Tests
 All unit tests and [examples](examples/examples.go) run via [Travis CI](https://travis-ci.com/mrz1836/go-mail) and uses [Go version 1.14.x](https://golang.org/doc/go1.14). View the [deployment configuration file](.travis.yml).
 
 Run all tests (including integration tests)
 ```bash
-$ cd ../go-mail
-$ go test ./... -v
+$ make test
 ```
 
 Run tests (excluding integration tests)
 ```bash
-$ cd ../go-mail
-$ go test ./... -v -test.short
+$ make test-short
 ```
 
 View and run the examples:
 ```bash
-$ cd ../go-mail/examples
-$ go run examples.go
+$ make run-examples
 ```
 
 ## Benchmarks
 Run the Go benchmarks:
 ```bash
-$ cd ../go-mail
-$ go test -bench . -benchmem
+$ make bench
 ```
 
 ## Code Standards
@@ -87,41 +129,11 @@ Read more about this Go project's [code standards](CODE_STANDARDS.md).
 ## Usage
 View the [examples](examples/examples.go)
 
-Basic implementation:
-```golang
-package main
-
-import (
-	"github.com/mrz1836/go-mail"
-)
-
-func main() {
-
-	// Config
-	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
-	mail.FromDomain = "example.com"
-
-	// Provider
-	mail.MandrillAPIKey = "1234567"
-
-	// Start the service
-	_ = mail.StartUp()
-
-	// Create and send a basic email
-	email := mail.NewEmail()
-	email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
-	email.Recipients = []string{"jack@example.com"}
-	email.Subject = "testing go-mail package - test message"
-
-	_ = mail.SendEmail(email, gomail.Mandrill)
-}
-```
-
 ## Maintainers
 
-[@MrZ](https://github.com/mrz1836)
+| [<img src="https://github.com/mrz1836.png" height="50" alt="MrZ" />](https://github.com/mrz1836) |
+|:---:|
+| [MrZ](https://github.com/mrz1836) |
 
 ## Contributing
 
