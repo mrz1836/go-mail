@@ -137,13 +137,6 @@ View the [examples](examples/examples.go)
 
 ## Contributing
 
-This project uses:
-- domodwyer's [mailyak](https://github.com/domodwyer/mailyak) package
-- keighl's [postmark](https://github.com/mrz1836/postmark) package
-- mattbaird's [gochimp](https://github.com/mattbaird/gochimp) package
-- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses) package
-- aymerick's [douceur](https://github.com/aymerick/douceur) package
-
 View the [contributing guidelines](CONTRIBUTING.md) and follow the [code of conduct](CODE_OF_CONDUCT.md).
 
 Support the development of this project 🙏
