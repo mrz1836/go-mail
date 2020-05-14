@@ -50,6 +50,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 
 <details>
 <summary><strong><code>Supported Service Providers</code></strong></summary>
+<br/>
 
 - [AWS SES](https://docs.aws.amazon.com/ses/)
 - [Mandrill](https://mandrillapp.com/api/docs/)
@@ -59,6 +60,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 
 <details>
 <summary><strong><code>Package Dependencies</code></strong></summary>
+<br/>
 
 - domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
 - keighl's [postmark](https://github.com/mrz1836/postmark)
@@ -69,6 +71,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 
 <details>
 <summary><strong><code>Library Deployment</code></strong></summary>
+<br/>
 
 [goreleaser](https://github.com/goreleaser/goreleaser) for easy binary or library deployment to Github and can be installed via: `brew install goreleaser`.
 
@@ -79,6 +82,7 @@ Use `make release-snap` to create a snapshot version of the release, and finally
 
 <details>
 <summary><strong><code>Makefile Commands</code></strong></summary>
+<br/>
 
 View all `makefile` commands
 ```shell script
@@ -151,7 +155,6 @@ View the [examples](examples/examples.go)
 <br/>
 
 ## Maintainers
-
 | [<img src="https://github.com/mrz1836.png" height="50" alt="MrZ" />](https://github.com/mrz1836) |
 |:---:|
 | [MrZ](https://github.com/mrz1836) |
