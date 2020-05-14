@@ -91,26 +91,30 @@ make help
 
 List of all current commands:
 ```text
-all                            Runs lint, test-short and vet
-bench                          Run all benchmarks in the Go application
-clean                          Remove previous builds and any test cache data
-clean-mods                     Remove all the Go mod cache
-coverage                       Shows the test coverage
-godocs                         Sync the latest tag with GoDocs
-help                           Show all make commands available
-lint                           Run the Go lint application
-release                        Full production release (creates release in Github)
-release-test                   Full production test release (everything except deploy)
-release-snap                   Test the full release (build binaries)
-run-examples                   Runs all the examples
-tag                            Generate a new tag and push (IE: tag version=0.0.0)
-tag-remove                     Remove a tag if found (IE: tag-remove version=0.0.0)
-tag-update                     Update an existing tag to current commit (IE: tag-update version=0.0.0)
-test                           Runs vet, lint and ALL tests
-test-short                     Runs vet, lint and tests (excludes integration tests)
-update                         Update all project dependencies
-update-releaser                Update the goreleaser application
-vet                            Run the Go vet application
+all                    Runs multiple commands
+clean                  Remove previous builds and any test cache data
+clean-mods             Remove all the Go mod cache
+coverage               Shows the test coverage
+godocs                 Sync the latest tag with GoDocs
+help                   Show this help message
+install                Install the application
+install-go             Install the application (Using Native Go)
+lint                   Run the Go lint application
+release                Full production release (creates release in Github)
+release                Runs common.release then runs godocs
+release-snap           Test the full release (build binaries)
+release-test           Full production test release (everything except deploy)
+replace-version        Replaces the version in HTML/JS (pre-deploy)
+run-examples           Runs all the examples
+tag                    Generate a new tag and push (tag version=0.0.0)
+tag-remove             Remove a tag if found (tag-remove version=0.0.0)
+tag-update             Update an existing tag to current commit (tag-update version=0.0.0)
+test                   Runs vet, lint and ALL tests
+test-short             Runs vet, lint and tests (excludes integration tests)
+test-travis            Runs all tests via Travis (also exports coverage)
+test-travis-short      Runs unit tests via Travis (also exports coverage)
+uninstall              Uninstall the application (and remove files)
+vet                    Run the Go vet application
 ```
 </details>
 
