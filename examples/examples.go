@@ -20,10 +20,10 @@ func main() {
 	// postmarkExample()
 
 	// Run the SMTP example
-	smtpExample()
+	// smtpExample()
 
 	// Run the AWS SES example
-	// awsSesExample()
+	awsSesExample()
 
 	// Example using ALL options available
 	// allOptionsExample()

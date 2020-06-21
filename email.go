@@ -178,7 +178,7 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 
 		// Send using given provider
 		if provider == AwsSes {
-			err = m.sendWithAwsSes(email)
+			err = sendViaAwsSes(&m.awsSesService, email)
 		} else if provider == Mandrill {
 			err = m.sendWithMandrill(email)
 		} else if provider == Postmark {

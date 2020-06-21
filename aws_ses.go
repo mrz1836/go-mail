@@ -9,8 +9,15 @@ import (
 	"github.com/domodwyer/mailyak"
 )
 
-// sendWithAwsSes sends an email using the AWS SES service
-func (m *MailService) sendWithAwsSes(email *Email) (err error) {
+// awsSesInterface is an interface for ses/mocking
+type awsSesInterface interface {
+	SendEmail(from, to, subject, body string) (string, error)
+	SendEmailHTML(from, to, subject, bodyText, bodyHTML string) (string, error)
+	SendRawEmail(raw []byte) (string, error)
+}
+
+// sendViaAwsSes sends an email using the AWS SES service
+func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
 
 	// Create new mail message
 	mail := mailyak.New("", nil)
@@ -65,13 +72,13 @@ func (m *MailService) sendWithAwsSes(email *Email) (err error) {
 
 	// Warn about features that are set but not available
 	if email.TrackClicks {
-		log.Printf("warning: track clicks is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track clicks is enabled, but AWS SES does not offer this feature")
 	}
 	if email.TrackOpens {
-		log.Printf("warning: track opens is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: track opens is enabled, but AWS SES does not offer this feature")
 	}
 	if email.AutoText {
-		log.Printf("warning: auto text is enabled, but aws ses does not offer this feature")
+		log.Printf("warning: auto text is enabled, but AWS SES does not offer this feature")
 	}
 
 	// Create the email buffer and pass to the ses service
@@ -82,9 +89,11 @@ func (m *MailService) sendWithAwsSes(email *Email) (err error) {
 
 	// Send the message post and check the response
 	var awsResponse string
-	awsResponse, err = m.awsSesService.SendRawEmail(buf.Bytes())
-	if !strings.Contains(awsResponse, "SendRawEmailResult") {
-		err = fmt.Errorf("aws ses did not return expected valid response, response: %s", awsResponse)
+	awsResponse, err = client.SendRawEmail(buf.Bytes())
+	if err != nil {
+		return err
+	} else if !strings.Contains(awsResponse, "SendRawEmailResult") {
+		err = fmt.Errorf("aws ses did not return expected valid response: %s", awsResponse)
 	}
 
 	return
