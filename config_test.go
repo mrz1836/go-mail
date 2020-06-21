@@ -29,3 +29,62 @@ func TestContainsServiceProvider(t *testing.T) {
 		}
 	}
 }
+
+// TestMailService_StartUp will test the StartUp() method
+func TestMailService_StartUp(t *testing.T) {
+	t.Parallel()
+
+	service := new(MailService)
+	err := service.StartUp()
+
+	// No user name
+	if err == nil || err.Error() != "missing required field: from_username" {
+		t.Errorf("%s Failed: expected an error for missing from name, error: %v", t.Name(), err)
+	}
+
+	// No domain
+	service.FromUsername = "someone"
+	err = service.StartUp()
+	if err == nil || err.Error() != "missing required field: from_domain" {
+		t.Errorf("%s Failed: expected an error for missing from domain, error: %v", t.Name(), err)
+	}
+
+	// No providers
+	service.FromDomain = "example.com"
+	err = service.StartUp()
+	if err == nil || err.Error() != "attempted to startup the email service provider(s) however there's no available service provider" {
+		t.Errorf("%s Failed: expected an error for missing a provider, error: %v", t.Name(), err)
+	}
+
+	// Add Mandrill api key
+	service.MandrillAPIKey = "1234567"
+	err = service.StartUp()
+	if err != nil {
+		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+	}
+
+	// Add AWS credentials
+	service.AwsSesAccessID = "1234567"
+	service.AwsSesSecretKey = "1234567"
+	err = service.StartUp()
+	if err != nil {
+		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+	}
+
+	// Add postmark credentials
+	service.PostmarkServerToken = "1234567"
+	err = service.StartUp()
+	if err != nil {
+		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+	}
+
+	// Add SMTP
+	service.SMTPHost = "example.com"
+	service.SMTPPassword = "fake"
+	service.SMTPUsername = "fake"
+	service.SMTPPort = 25
+	err = service.StartUp()
+	if err != nil {
+		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+	}
+}
