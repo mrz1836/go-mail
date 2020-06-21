@@ -17,13 +17,13 @@ func main() {
 	// mandrillExample()
 
 	// Run the Postmark example
-	// postmarkExample()
+	postmarkExample()
 
 	// Run the SMTP example
 	// smtpExample()
 
 	// Run the AWS SES example
-	awsSesExample()
+	// awsSesExample()
 
 	// Example using ALL options available
 	// allOptionsExample()
@@ -109,7 +109,7 @@ func postmarkExample() {
 	email := mail.NewEmail()
 	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{toRecipients}
-	email.Subject = "example go-mail email using Mandrill"
+	email.Subject = "example go-mail email using Postmark"
 
 	// Send the email
 	err = mail.SendEmail(email, provider)
@@ -163,7 +163,7 @@ func smtpExample() {
 	email := mail.NewEmail()
 	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{toRecipients}
-	email.Subject = "example go-mail email using Mandrill"
+	email.Subject = "example go-mail email using SMTP"
 
 	// Send the email
 	err = mail.SendEmail(email, provider)
@@ -212,7 +212,7 @@ func awsSesExample() {
 	email := mail.NewEmail()
 	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{toRecipients}
-	email.Subject = "example go-mail email using Mandrill"
+	email.Subject = "example go-mail email using AWS SES"
 
 	// Send the email
 	err = mail.SendEmail(email, provider)
@@ -261,12 +261,12 @@ func allOptionsExample() {
 	// Create a new email
 	email := mail.NewEmail()
 
-	email.PlainTextContent = "This is a go-mail test email using plain-text"
-	email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
+	email.PlainTextContent = "This is a go-mail example email using plain-text"
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{os.Getenv("EMAIL_TEST_TO_RECIPIENT")}
 	email.RecipientsCc = []string{os.Getenv("EMAIL_TEST_CC_RECIPIENT")}
 	email.RecipientsBcc = []string{os.Getenv("EMAIL_TEST_BCC_RECIPIENT")}
-	email.Subject = "testing go-mail package - test fullExample"
+	email.Subject = "testing go-mail - example email"
 	email.Tags = []string{"admin_alert"}
 	email.Important = true
 
@@ -280,11 +280,10 @@ func allOptionsExample() {
 	}
 
 	// Send the email (basic example using one provider)
-	err = mail.SendEmail(email, provider)
-	if err != nil {
+	if err = mail.SendEmail(email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
 	}
 
 	// Congrats!
-	log.Printf("all emails sent via fullExample()")
+	log.Printf("all emails sent~")
 }

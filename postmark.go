@@ -11,8 +11,13 @@ import (
 	"github.com/mrz1836/postmark"
 )
 
-// sendWithPostmark sends an email using the postmark service
-func (m *MailService) sendWithPostmark(email *Email) (err error) {
+// postmarkInterface is an interface for postmark/mocking
+type postmarkInterface interface {
+	SendEmail(email postmark.Email) (postmark.EmailResponse, error)
+}
+
+// sendViaPostmark sends an email using the Postmark service
+func sendViaPostmark(client postmarkInterface, email *Email) (err error) {
 
 	// Create the email struct
 	postmarkEmail := postmark.Email{
@@ -30,9 +35,9 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 		postmarkEmail.TrackLinks = "HtmlAndText"
 	}
 
-	// Warn about features that are set but not available //todo: remove once enabled
+	// Warn about features that are set but not available
 	if email.AutoText {
-		log.Printf("warning: auto text is enabled, but postmark does not offer this feature")
+		log.Printf("warning: auto text is enabled, but Postmark does not offer this feature")
 	}
 
 	// Set the from name if given
@@ -57,28 +62,26 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 	}
 
 	// Convert attachments to Postmark format
-	if len(email.Attachments) > 0 {
-		for _, attachment := range email.Attachments {
+	for _, attachment := range email.Attachments {
 
-			// Create the postmark attachment
-			postmarkAttachment := new(postmark.Attachment)
-			postmarkAttachment.Name = attachment.FileName
-			postmarkAttachment.ContentType = attachment.FileType
-
-			// Read all content from the attachment
-			reader := bufio.NewReader(attachment.FileReader)
-			var content []byte
-			if content, err = ioutil.ReadAll(reader); err != nil {
-				return
-			}
-
-			// Encode as base64
-			encoded := base64.StdEncoding.EncodeToString(content)
-			postmarkAttachment.Content = encoded
-
-			// Add to the email
-			postmarkEmail.Attachments = append(postmarkEmail.Attachments, *postmarkAttachment)
+		// Create the postmark attachment
+		postmarkAttachment := &postmark.Attachment{
+			ContentType: attachment.FileType,
+			Name:        attachment.FileName,
 		}
+
+		// Read all content from the attachment
+		reader := bufio.NewReader(attachment.FileReader)
+		var content []byte
+		if content, err = ioutil.ReadAll(reader); err != nil {
+			return
+		}
+
+		// Encode as base64
+		postmarkAttachment.Content = base64.StdEncoding.EncodeToString(content)
+
+		// Add to the email
+		postmarkEmail.Attachments = append(postmarkEmail.Attachments, *postmarkAttachment)
 	}
 
 	// Add importance
@@ -93,13 +96,13 @@ func (m *MailService) sendWithPostmark(email *Email) (err error) {
 
 	// Send the email
 	var resp postmark.EmailResponse
-	if resp, err = m.postmarkService.SendEmail(postmarkEmail); err != nil {
+	if resp, err = client.SendEmail(postmarkEmail); err != nil {
 		return
 	}
 
-	// Check the response from postmark
+	// Check the response from Postmark
 	if resp.ErrorCode > 0 {
-		err = fmt.Errorf("error from postmark: %s error code: %d to email: %s", resp.Message, resp.ErrorCode, resp.To)
+		err = fmt.Errorf("error from postmark: %s error code: %d", resp.Message, resp.ErrorCode)
 	}
 
 	return
