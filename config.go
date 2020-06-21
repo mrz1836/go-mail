@@ -91,10 +91,8 @@ func (m *MailService) StartUp() (err error) {
 	// If the key is set, try loading the service
 	if len(m.MandrillAPIKey) > 0 {
 
-		m.mandrillService, err = gochimp.NewMandrill(m.MandrillAPIKey)
-		if err != nil {
-			return
-		}
+		// Never will return an error - set new MandrillApi
+		m.mandrillService, _ = gochimp.NewMandrill(m.MandrillAPIKey)
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, Mandrill)

@@ -66,6 +66,7 @@ func TestMailService_StartUp(t *testing.T) {
 	// Add AWS credentials
 	service.AwsSesAccessID = "1234567"
 	service.AwsSesSecretKey = "1234567"
+	service.AwsSesEndpoint = awsSesDefaultEndpoint
 	err = service.StartUp()
 	if err != nil {
 		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
