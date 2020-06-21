@@ -156,6 +156,7 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 	if containsServiceProvider(m.AvailableProviders, provider) {
 
 		// Safe guard the user sending mis-configured emails
+		// These validations are standard on all providers
 		if len(email.Subject) == 0 {
 			err = fmt.Errorf("email is missing a subject")
 			return

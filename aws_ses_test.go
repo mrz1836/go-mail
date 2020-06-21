@@ -51,7 +51,7 @@ func (m *mockAwsSesInterface) SendRawEmail(raw []byte) (string, error) {
 
 	// Bad result
 	if strings.Contains(rawString, "To: test@badresult.com") {
-		return "<ErrorMessage>Failed!</ErrorMessage>", fmt.Errorf("unknown result")
+		return "<ErrorMessage>Failed!</ErrorMessage>", nil
 	}
 
 	// Default is success
