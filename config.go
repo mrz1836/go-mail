@@ -12,10 +12,10 @@ import (
 // Package constants
 const (
 	// Email Service Providers
-	AwsSes   ServiceProvider = iota // AWS SES Service
+	AwsSes   ServiceProvider = iota // AWS SES Email Service
 	Mandrill                        // Mandrill Email Service
 	Postmark                        // Postmark Email Service
-	SMTP                            // Send via smtp
+	SMTP                            // SMTP Email Service
 )
 
 const (
@@ -57,6 +57,7 @@ type MailService struct {
 	mandrillService *gochimp.MandrillAPI // internal mandrill api service
 	postmarkService *postmark.Client     // internal postmark api service
 	smtpAuth        smtp.Auth            // internal auth credentials for smtp
+	smtpClient      smtpInterface        // internal smtp interface client
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers
@@ -126,6 +127,9 @@ func (m *MailService) StartUp() (err error) {
 
 		// Set the credentials
 		m.smtpAuth = smtp.PlainAuth("", m.SMTPUsername, m.SMTPPassword, m.SMTPHost)
+
+		// Create a new client from the connection string
+		m.smtpClient = newSMTPClient(fmt.Sprintf("%s:%d", m.SMTPHost, m.SMTPPort), m.smtpAuth)
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, SMTP)

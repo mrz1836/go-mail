@@ -13,21 +13,45 @@ import (
 
 func main() {
 
-	basicExample()
+	// Run the Mandrill example
+	// mandrillExample()
 
-	fullExample()
+	// Run the Postmark example
+	// postmarkExample()
+
+	// Run the SMTP example
+	smtpExample()
+
+	// Run the AWS SES example
+	// awsSesExample()
+
+	// Example using ALL options available
+	// allOptionsExample()
 }
 
-// basicExample is using the least amount of features
-func basicExample() {
+// mandrillExample shows an example using Mandrill as the provider
+func mandrillExample() {
+
 	// Config
 	mail := new(gomail.MailService)
 	mail.FromName = "No Reply"
 	mail.FromUsername = "no-reply"
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
 
 	// Provider
 	mail.MandrillAPIKey = os.Getenv("EMAIL_MANDRILL_KEY")
+	if len(mail.MandrillAPIKey) == 0 {
+		log.Fatal("missing env: EMAIL_MANDRILL_KEY")
+	}
 	provider := gomail.Mandrill
 
 	// Start the service
@@ -38,21 +62,168 @@ func basicExample() {
 
 	// Create and send a basic email
 	email := mail.NewEmail()
-	email.HTMLContent = "<html><body>This is a <b>go-mail</b> test email using <i>HTML</i></body></html>"
-	email.Recipients = []string{os.Getenv("EMAIL_TEST_TO_RECIPIENT")}
-	email.Subject = "testing go-mail package - test basicExample"
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Mandrill"
 
+	// Send the email
 	err = mail.SendEmail(email, provider)
 	if err != nil {
-		log.Printf("error in SendEmail: %s using provider %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
 	}
-
-	// Congrats!
-	log.Printf("all emails sent via basicExample()")
+	log.Printf("email sent!")
 }
 
-// fullExample is using the most amount of features
-func fullExample() {
+// postmarkExample shows an example using Postmark as the provider
+func postmarkExample() {
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN")
+	if len(mail.PostmarkServerToken) == 0 {
+		log.Fatal("missing env: EMAIL_POSTMARK_SERVER_TOKEN")
+	}
+	provider := gomail.Postmark
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Mandrill"
+
+	// Send the email
+	err = mail.SendEmail(email, provider)
+	if err != nil {
+		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
+// smtpExample shows an example using SMTP as the provider
+func smtpExample() {
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.SMTPHost = os.Getenv("EMAIL_SMTP_HOST")
+	mail.SMTPPort, _ = strconv.Atoi(os.Getenv("EMAIL_SMTP_PORT"))
+	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")
+	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")
+	if len(mail.SMTPHost) == 0 {
+		log.Fatal("missing env: EMAIL_SMTP_HOST")
+	}
+	if len(mail.SMTPUsername) == 0 {
+		log.Fatal("missing env: EMAIL_SMTP_USERNAME")
+	}
+	if mail.SMTPPort == 0 {
+		log.Fatal("missing env: EMAIL_SMTP_PORT")
+	}
+	provider := gomail.SMTP
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Mandrill"
+
+	// Send the email
+	err = mail.SendEmail(email, provider)
+	if err != nil {
+		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
+// awsSesExample shows an example using AWS SES as the provider
+func awsSesExample() {
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.AwsSesAccessID = os.Getenv("EMAIL_AWS_SES_ACCESS_ID")
+	mail.AwsSesSecretKey = os.Getenv("EMAIL_AWS_SES_SECRET_KEY")
+	if len(mail.AwsSesAccessID) == 0 {
+		log.Fatal("missing env: EMAIL_AWS_SES_ACCESS_ID")
+	}
+	if len(mail.AwsSesSecretKey) == 0 {
+		log.Fatal("missing env: EMAIL_AWS_SES_SECRET_KEY")
+	}
+	provider := gomail.AwsSes
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Mandrill"
+
+	// Send the email
+	err = mail.SendEmail(email, provider)
+	if err != nil {
+		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
+// allOptionsExample is using the most amount of options/features
+func allOptionsExample() {
 
 	// Define your service configuration
 	mail := new(gomail.MailService)
@@ -111,7 +282,7 @@ func fullExample() {
 	// Send the email (basic example using one provider)
 	err = mail.SendEmail(email, provider)
 	if err != nil {
-		log.Printf("error in SendEmail: %s using provider %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
 	}
 
 	// Congrats!

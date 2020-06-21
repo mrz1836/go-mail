@@ -7,6 +7,8 @@ import (
 
 // TestMailService_NewEmail tests the method NewEmail()
 func TestMailService_NewEmail(t *testing.T) {
+	t.Parallel()
+
 	mail := new(MailService)
 
 	mail.AutoText = true
@@ -63,6 +65,8 @@ func BenchmarkMailService_NewEmail(b *testing.B) {
 
 // TestEmail_AddAttachment tests the method AddAttachment()
 func TestEmail_AddAttachment(t *testing.T) {
+	t.Parallel()
+
 	mail := new(MailService)
 	mail.FromUsername = "no-reply"
 	mail.FromName = "No Reply"
