@@ -126,13 +126,13 @@ func TestNewSMTPClient(t *testing.T) {
 
 	err := client.Send()
 	if err == nil {
-		t.Errorf("error should have occurred, host was empty")
+		t.Fatalf("error should have occurred, host was empty")
 	}
 
 	client = newSMTPClient("example.com", auth)
 	err = client.Send()
 	if err == nil {
-		t.Errorf("error should have occurred, host example.com")
+		t.Fatalf("error should have occurred, host example.com")
 	}
 }
 
@@ -170,7 +170,7 @@ func TestSendViaSMTP(t *testing.T) {
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
 	if err != nil {
-		t.Errorf("failed to attach file: %s", err.Error())
+		t.Fatalf("failed to attach file: %s", err.Error())
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
@@ -192,9 +192,9 @@ func TestSendViaSMTP(t *testing.T) {
 		email.RecipientsBcc = []string{test.input}
 		email.ReplyToAddress = test.input
 		if err = sendViaSMTP(client, email); err != nil && !test.expectedError {
-			t.Errorf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
+			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
 		} else if err == nil && test.expectedError {
-			t.Errorf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
+			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
 		}
 	}
 }

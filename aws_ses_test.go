@@ -90,7 +90,7 @@ func TestSendViaAwsSes(t *testing.T) {
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
 	if err != nil {
-		t.Errorf("failed to attach file: %s", err.Error())
+		t.Fatalf("failed to attach file: %s", err.Error())
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
@@ -112,9 +112,9 @@ func TestSendViaAwsSes(t *testing.T) {
 		email.RecipientsBcc = []string{test.input}
 		email.ReplyToAddress = test.input
 		if err = sendViaAwsSes(client, email); err != nil && !test.expectedError {
-			t.Errorf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
+			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
 		} else if err == nil && test.expectedError {
-			t.Errorf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
+			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
 		}
 	}
 }

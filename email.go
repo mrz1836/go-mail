@@ -33,7 +33,7 @@ type Email struct {
 	ViewContentLink  bool         `json:"view_content_link" mapstructure:"view_content_link"`
 }
 
-// Attachment is the attachment
+// Attachment is the email file attachment
 type Attachment struct {
 	FileName   string    `json:"file_name" mapstructure:"file_name"`
 	FileReader io.Reader `json:"-" mapstructure:"-"`
@@ -49,7 +49,7 @@ func (e *Email) AddAttachment(name, fileType string, reader io.Reader) {
 	})
 }
 
-// ApplyTemplates will take the template files and process them with the email dataStruct (can be e or overridden)
+// ApplyTemplates will take the template files and process them with the email data (can be e or overridden)
 func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *template.Template, emailData interface{}) (err error) {
 
 	// Start the buffer
@@ -93,8 +93,7 @@ func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *te
 // ParseTemplate parse the template, fire error if parse fails
 // This method returns the template which should be stored in memory for quick access
 func (e *Email) ParseTemplate(filename string) (parsed *template.Template, err error) {
-	parsed = template.New(filepath.Base(filename))
-	return parsed.ParseFiles(filename)
+	return template.New(filepath.Base(filename)).ParseFiles(filename)
 }
 
 // ParseHTMLTemplate parse the template with inline style injection (html)

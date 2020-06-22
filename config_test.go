@@ -23,9 +23,9 @@ func TestContainsServiceProvider(t *testing.T) {
 	// Loop tests
 	for _, test := range tests {
 		if found := containsServiceProvider(test.providers, test.provider); found && !test.expected {
-			t.Errorf("%s Failed: [%v] providers, [%d] provider, found but expected to fail", t.Name(), test.providers, test.provider)
+			t.Fatalf("%s Failed: [%v] providers, [%d] provider, found but expected to fail", t.Name(), test.providers, test.provider)
 		} else if !found && test.expected {
-			t.Errorf("%s Failed: [%v] providers, [%d] provider, NOT found but expected to succeed", t.Name(), test.providers, test.provider)
+			t.Fatalf("%s Failed: [%v] providers, [%d] provider, NOT found but expected to succeed", t.Name(), test.providers, test.provider)
 		}
 	}
 }
@@ -39,28 +39,28 @@ func TestMailService_StartUp(t *testing.T) {
 
 	// No user name
 	if err == nil || err.Error() != "missing required field: from_username" {
-		t.Errorf("%s Failed: expected an error for missing from name, error: %v", t.Name(), err)
+		t.Fatalf("%s Failed: expected an error for missing from name, error: %v", t.Name(), err)
 	}
 
 	// No domain
 	service.FromUsername = "someone"
 	err = service.StartUp()
 	if err == nil || err.Error() != "missing required field: from_domain" {
-		t.Errorf("%s Failed: expected an error for missing from domain, error: %v", t.Name(), err)
+		t.Fatalf("%s Failed: expected an error for missing from domain, error: %v", t.Name(), err)
 	}
 
 	// No providers
 	service.FromDomain = "example.com"
 	err = service.StartUp()
 	if err == nil || err.Error() != "attempted to startup the email service provider(s) however there's no available service provider" {
-		t.Errorf("%s Failed: expected an error for missing a provider, error: %v", t.Name(), err)
+		t.Fatalf("%s Failed: expected an error for missing a provider, error: %v", t.Name(), err)
 	}
 
 	// Add Mandrill api key
 	service.MandrillAPIKey = "1234567"
 	err = service.StartUp()
 	if err != nil {
-		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+		t.Fatalf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
 	}
 
 	// Add AWS credentials
@@ -69,14 +69,14 @@ func TestMailService_StartUp(t *testing.T) {
 	service.AwsSesEndpoint = awsSesDefaultEndpoint
 	err = service.StartUp()
 	if err != nil {
-		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+		t.Fatalf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
 	}
 
 	// Add postmark credentials
 	service.PostmarkServerToken = "1234567"
 	err = service.StartUp()
 	if err != nil {
-		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+		t.Fatalf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
 	}
 
 	// Add SMTP
@@ -86,6 +86,6 @@ func TestMailService_StartUp(t *testing.T) {
 	service.SMTPPort = 25
 	err = service.StartUp()
 	if err != nil {
-		t.Errorf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
+		t.Fatalf("%s Failed: error should not have occurred, error: %s", t.Name(), err.Error())
 	}
 }
