@@ -1,0 +1,5 @@
+Example Template (No Styles)
+
+This is an example email
+
+Sending email from: {{.FromName}}
