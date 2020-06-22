@@ -53,8 +53,8 @@ type MailService struct {
 	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`                   // whether or not to turn on click tracking for the message
 	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`                     // whether or not to turn on open tracking for the message
 
-	// awsSesService awsSesInterface // AWS SES client
-	awsSesService   ses.Config        // AWS SES client
+	awsConfig       ses.Config        // AWS SES config
+	awsSesService   awsSesInterface   // AWS SES client
 	mandrillService mandrillInterface // Mandrill api client
 	postmarkService postmarkInterface // Postmark api client
 	smtpAuth        smtp.Auth         // Auth credentials for SMTP
@@ -84,7 +84,7 @@ func (m *MailService) StartUp() (err error) {
 	}
 
 	// Set any defaults
-	m.awsSesService.Endpoint = awsSesDefaultEndpoint
+	m.awsConfig.Endpoint = awsSesDefaultEndpoint
 	m.MaxToRecipients = maxToRecipients
 	m.MaxCcRecipients = maxCcRecipients
 	m.MaxBccRecipients = maxBccRecipients
@@ -103,11 +103,14 @@ func (m *MailService) StartUp() (err error) {
 	if len(m.AwsSesAccessID) > 0 && len(m.AwsSesSecretKey) > 0 {
 
 		// Set the credentials
-		m.awsSesService.AccessKeyID = m.AwsSesAccessID
-		m.awsSesService.SecretAccessKey = m.AwsSesSecretKey
+		m.awsConfig.AccessKeyID = m.AwsSesAccessID
+		m.awsConfig.SecretAccessKey = m.AwsSesSecretKey
 		if len(m.AwsSesEndpoint) > 0 {
-			m.awsSesService.Endpoint = m.AwsSesEndpoint
+			m.awsConfig.Endpoint = m.AwsSesEndpoint
 		}
+
+		// Use the ses.Config
+		m.awsSesService = &m.awsConfig
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, AwsSes)

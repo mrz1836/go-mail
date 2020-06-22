@@ -13,8 +13,11 @@ import (
 
 func main() {
 
+	// Run the AWS SES example
+	awsSesExample()
+
 	// Run the Mandrill example
-	mandrillExample()
+	// mandrillExample()
 
 	// Run the Postmark example
 	// postmarkExample()
@@ -22,11 +25,56 @@ func main() {
 	// Run the SMTP example
 	// smtpExample()
 
-	// Run the AWS SES example
-	// awsSesExample()
-
 	// Example using ALL options available
 	// allOptionsExample()
+}
+
+// awsSesExample shows an example using AWS SES as the provider
+func awsSesExample() {
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.AwsSesAccessID = os.Getenv("EMAIL_AWS_SES_ACCESS_ID")
+	mail.AwsSesSecretKey = os.Getenv("EMAIL_AWS_SES_SECRET_KEY")
+	if len(mail.AwsSesAccessID) == 0 {
+		log.Fatal("missing env: EMAIL_AWS_SES_ACCESS_ID")
+	}
+	if len(mail.AwsSesSecretKey) == 0 {
+		log.Fatal("missing env: EMAIL_AWS_SES_SECRET_KEY")
+	}
+	provider := gomail.AwsSes
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using AWS SES"
+
+	// Send the email
+	if err = mail.SendEmail(email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+	}
+	log.Printf("email sent!")
 }
 
 // mandrillExample shows an example using Mandrill as the provider
@@ -162,54 +210,6 @@ func smtpExample() {
 	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{toRecipients}
 	email.Subject = "example go-mail email using SMTP"
-
-	// Send the email
-	if err = mail.SendEmail(email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
-	}
-	log.Printf("email sent!")
-}
-
-// awsSesExample shows an example using AWS SES as the provider
-func awsSesExample() {
-
-	// Config
-	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
-	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
-	if len(mail.FromDomain) == 0 {
-		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
-	}
-
-	// Set the to field
-	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
-	if len(toRecipients) == 0 {
-		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
-	}
-
-	// Provider
-	mail.AwsSesAccessID = os.Getenv("EMAIL_AWS_SES_ACCESS_ID")
-	mail.AwsSesSecretKey = os.Getenv("EMAIL_AWS_SES_SECRET_KEY")
-	if len(mail.AwsSesAccessID) == 0 {
-		log.Fatal("missing env: EMAIL_AWS_SES_ACCESS_ID")
-	}
-	if len(mail.AwsSesSecretKey) == 0 {
-		log.Fatal("missing env: EMAIL_AWS_SES_SECRET_KEY")
-	}
-	provider := gomail.AwsSes
-
-	// Start the service
-	err := mail.StartUp()
-	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
-	}
-
-	// Create and send a basic email
-	email := mail.NewEmail()
-	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
-	email.Recipients = []string{toRecipients}
-	email.Subject = "example go-mail email using AWS SES"
 
 	// Send the email
 	if err = mail.SendEmail(email, provider); err != nil {
