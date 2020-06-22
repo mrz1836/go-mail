@@ -9,9 +9,11 @@ import (
 	"github.com/sourcegraph/go-ses"
 )
 
-// Package constants
+// ServiceProvider is the provider
+type ServiceProvider int
+
+// Email Service Providers
 const (
-	// Email Service Providers
 	AwsSes   ServiceProvider = iota // AWS SES Email Service
 	Mandrill                        // Mandrill Email Service
 	Postmark                        // Postmark Email Service
@@ -19,17 +21,13 @@ const (
 )
 
 const (
-	// awsSesDefaultEndpoint default endpoint for AWS SES
 	awsSesDefaultEndpoint = "https://email.us-east-1.amazonaws.com"
-	maxToRecipients       = 50
-	maxCcRecipients       = 50
 	maxBccRecipients      = 50
+	maxCcRecipients       = 50
+	maxToRecipients       = 50
 )
 
-// ServiceProvider is the provider
-type ServiceProvider int
-
-// MailService is the email configuration to use for loading the service
+// MailService is the configuration to use for loading the service and provider's clients
 type MailService struct {
 	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                         // whether or not to automatically generate a text part for messages that are not given text
 	AvailableProviders  []ServiceProvider `json:"available_providers" mapstructure:"available_providers"`     // list of providers that loaded successfully
@@ -59,16 +57,6 @@ type MailService struct {
 	postmarkService postmarkInterface // Postmark api client
 	smtpAuth        smtp.Auth         // Auth credentials for SMTP
 	smtpClient      smtpInterface     // SMTP client
-}
-
-// containsServiceProvider is a simple lookup for a service provider in a list of providers
-func containsServiceProvider(s []ServiceProvider, e ServiceProvider) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
 }
 
 // StartUp is fired once to load the email service
@@ -143,4 +131,14 @@ func (m *MailService) StartUp() (err error) {
 	}
 
 	return
+}
+
+// containsServiceProvider is a simple lookup for a service provider in a list of providers
+func containsServiceProvider(s []ServiceProvider, e ServiceProvider) bool {
+	for _, a := range s {
+		if a == e {
+			return true
+		}
+	}
+	return false
 }
