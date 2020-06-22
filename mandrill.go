@@ -10,33 +10,40 @@ import (
 	"github.com/mattbaird/gochimp"
 )
 
-// sendWithMandrill sends an email using the Mandrill service
-func (m *MailService) sendWithMandrill(email *Email) (err error) {
+// mandrillInterface is an interface for Mandrill/mocking
+type mandrillInterface interface {
+	MessageSend(message gochimp.Message, async bool) ([]gochimp.SendResponse, error)
+}
+
+// sendViaMandrill sends an email using the Mandrill service
+// Mandrill uses the word Message for their email
+func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err error) {
 
 	// Get the signing domain from the from address
 	sign := strings.Split(email.FromAddress, "@")
-	var signDomain string
 	if len(sign) <= 1 {
-		signDomain = m.FromDomain
-	} else {
-		signDomain = sign[1]
+		err = fmt.Errorf("invalid from address, sign domain not found using %s", email.FromAddress)
+		return
 	}
 
-	// Create the Mandrill Email
+	// Set the domain using the FromAddress
+	signDomain := sign[1]
+
+	// Create the Mandrill email
 	message := gochimp.Message{
+		AutoText:           email.AutoText,
 		FromEmail:          email.FromAddress,
 		FromName:           email.FromName,
 		Html:               email.HTMLContent,
+		Important:          email.Important,
 		PreserveRecipients: false,
 		SigningDomain:      signDomain,
 		Subject:            email.Subject,
 		Tags:               email.Tags,
 		Text:               email.PlainTextContent,
-		Important:          email.Important,
-		TrackOpens:         email.TrackOpens,
 		TrackClicks:        email.TrackClicks,
+		TrackOpens:         email.TrackOpens,
 		ViewContentLink:    email.ViewContentLink,
-		AutoText:           email.AutoText,
 	}
 
 	// Convert recipients
@@ -49,55 +56,49 @@ func (m *MailService) sendWithMandrill(email *Email) (err error) {
 	}
 
 	// Convert any BCC recipients
-	if len(email.RecipientsBcc) > 0 {
-		for _, recipient := range email.RecipientsBcc {
-			emailRecipient := gochimp.Recipient{
-				Email: recipient,
-				Type:  "bcc",
-			}
-			message.To = append(message.To, emailRecipient)
+	for _, recipient := range email.RecipientsBcc {
+		emailRecipient := gochimp.Recipient{
+			Email: recipient,
+			Type:  "bcc",
 		}
+		message.To = append(message.To, emailRecipient)
 	}
 
-	// Convert any BCC recipients
-	if len(email.RecipientsCc) > 0 {
-		for _, recipient := range email.RecipientsCc {
-			emailRecipient := gochimp.Recipient{
-				Email: recipient,
-				Type:  "cc",
-			}
-			message.To = append(message.To, emailRecipient)
+	// Convert any CC recipients
+	for _, recipient := range email.RecipientsCc {
+		emailRecipient := gochimp.Recipient{
+			Email: recipient,
+			Type:  "cc",
 		}
+		message.To = append(message.To, emailRecipient)
 	}
 
 	// Convert attachments to Mandrill format
-	if len(email.Attachments) > 0 {
-		for _, attachment := range email.Attachments {
+	for _, attachment := range email.Attachments {
 
-			// Create the mandrill attachment
-			mandrillAttachment := new(gochimp.Attachment)
-			mandrillAttachment.Name = attachment.FileName
-			mandrillAttachment.Type = attachment.FileType
-
-			// Read all content from the attachment
-			reader := bufio.NewReader(attachment.FileReader)
-			var content []byte
-			if content, err = ioutil.ReadAll(reader); err != nil {
-				return
-			}
-
-			// Encode as base64
-			encoded := base64.StdEncoding.EncodeToString(content)
-			mandrillAttachment.Content = encoded
-
-			// Add to the email
-			message.Attachments = append(message.Attachments, *mandrillAttachment)
+		// Create the Mandrill attachment
+		mandrillAttachment := &gochimp.Attachment{
+			Name: attachment.FileName,
+			Type: attachment.FileType,
 		}
+
+		// Read all content from the attachment
+		reader := bufio.NewReader(attachment.FileReader)
+		var content []byte
+		if content, err = ioutil.ReadAll(reader); err != nil {
+			return
+		}
+
+		// Encode as base64
+		mandrillAttachment.Content = base64.StdEncoding.EncodeToString(content)
+
+		// Add to the email
+		message.Attachments = append(message.Attachments, *mandrillAttachment)
 	}
 
-	// Execute the send
+	// Send the email
 	var sendResponse []gochimp.SendResponse
-	if sendResponse, err = m.mandrillService.MessageSend(message, false); err != nil {
+	if sendResponse, err = client.MessageSend(message, async); err != nil {
 		return
 	}
 

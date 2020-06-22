@@ -54,11 +54,11 @@ type MailService struct {
 	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`                     // whether or not to turn on open tracking for the message
 
 	// awsSesService awsSesInterface // AWS SES client
-	awsSesService   ses.Config           // AWS SES client
-	mandrillService *gochimp.MandrillAPI // Mandrill api client
-	postmarkService postmarkInterface    // Postmark api client
-	smtpAuth        smtp.Auth            // Auth credentials for SMTP
-	smtpClient      smtpInterface        // SMTP client
+	awsSesService   ses.Config        // AWS SES client
+	mandrillService mandrillInterface // Mandrill api client
+	postmarkService postmarkInterface // Postmark api client
+	smtpAuth        smtp.Auth         // Auth credentials for SMTP
+	smtpClient      smtpInterface     // SMTP client
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers

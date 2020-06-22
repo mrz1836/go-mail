@@ -11,7 +11,7 @@ import (
 	"github.com/mrz1836/postmark"
 )
 
-// postmarkInterface is an interface for postmark/mocking
+// postmarkInterface is an interface for Postmark/mocking
 type postmarkInterface interface {
 	SendEmail(email postmark.Email) (postmark.EmailResponse, error)
 }

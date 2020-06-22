@@ -14,10 +14,10 @@ import (
 func main() {
 
 	// Run the Mandrill example
-	// mandrillExample()
+	mandrillExample()
 
 	// Run the Postmark example
-	postmarkExample()
+	// postmarkExample()
 
 	// Run the SMTP example
 	// smtpExample()
@@ -57,7 +57,7 @@ func mandrillExample() {
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -67,9 +67,8 @@ func mandrillExample() {
 	email.Subject = "example go-mail email using Mandrill"
 
 	// Send the email
-	err = mail.SendEmail(email, provider)
-	if err != nil {
-		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	if err = mail.SendEmail(email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -102,7 +101,7 @@ func postmarkExample() {
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -112,9 +111,8 @@ func postmarkExample() {
 	email.Subject = "example go-mail email using Postmark"
 
 	// Send the email
-	err = mail.SendEmail(email, provider)
-	if err != nil {
-		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	if err = mail.SendEmail(email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -156,7 +154,7 @@ func smtpExample() {
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -166,9 +164,8 @@ func smtpExample() {
 	email.Subject = "example go-mail email using SMTP"
 
 	// Send the email
-	err = mail.SendEmail(email, provider)
-	if err != nil {
-		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	if err = mail.SendEmail(email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -205,7 +202,7 @@ func awsSesExample() {
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -215,9 +212,8 @@ func awsSesExample() {
 	email.Subject = "example go-mail email using AWS SES"
 
 	// Send the email
-	err = mail.SendEmail(email, provider)
-	if err != nil {
-		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+	if err = mail.SendEmail(email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -247,12 +243,12 @@ func allOptionsExample() {
 	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")          // johndoe
 	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          // secretPassword
 
-	provider := gomail.SMTP // AwsSes Mandrill Postmark
+	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark
 
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Available services given the config above
@@ -269,6 +265,9 @@ func allOptionsExample() {
 	email.Subject = "testing go-mail - example email"
 	email.Tags = []string{"admin_alert"}
 	email.Important = true
+	email.TrackClicks = true
+	email.TrackOpens = true
+	email.AutoText = true
 
 	// Add an attachment
 	var f *os.File
@@ -281,9 +280,9 @@ func allOptionsExample() {
 
 	// Send the email (basic example using one provider)
 	if err = mail.SendEmail(email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 
 	// Congrats!
-	log.Printf("all emails sent~")
+	log.Printf("all emails sent!")
 }
