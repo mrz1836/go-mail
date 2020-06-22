@@ -258,8 +258,17 @@ func TestMailService_SendEmail(t *testing.T) {
 	mail.FromDomain = "example.com"
 	mail.Important = true
 
-	// Use the postmark provider
+	// Use the Postmark provider
 	mail.PostmarkServerToken = "1234567"
+
+	// Use the Mandrill provider
+	mail.MandrillAPIKey = "1234567"
+
+	// Use the SMTP provider
+	mail.SMTPPort = 25
+	mail.SMTPUsername = "fake"
+	mail.SMTPPassword = "fake"
+	mail.SMTPHost = "example.com"
 
 	// Start the mail service
 	err := mail.StartUp()
@@ -267,8 +276,11 @@ func TestMailService_SendEmail(t *testing.T) {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
-	// Set mock interface
+	// Set mock interface(s)
 	mail.postmarkService = &mockPostmarkInterface{}
+	// mail.awsSesService = ses.Config
+	mail.mandrillService = &mockMandrillInterface{}
+	mail.smtpClient = newMockSMTPClient()
 
 	email := mail.NewEmail()
 
@@ -305,8 +317,18 @@ func TestMailService_SendEmail(t *testing.T) {
 	}
 	email.Recipients = append(email.Recipients, "someone@domain.com")
 
-	// Valid
+	// Valid (Postmark)
 	if err = mail.SendEmail(email, Postmark); err != nil {
+		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
+	}
+
+	// Valid (Mandrill)
+	if err = mail.SendEmail(email, Mandrill); err != nil {
+		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
+	}
+
+	// Valid (SMTP)
+	if err = mail.SendEmail(email, SMTP); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
