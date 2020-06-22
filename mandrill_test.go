@@ -104,4 +104,10 @@ func TestSendViaMandrill(t *testing.T) {
 			t.Errorf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
 		}
 	}
+
+	// Test bad from address
+	email.FromAddress = "invalid@"
+	if err = sendViaMandrill(client, email, false); err == nil {
+		t.Errorf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), email.FromAddress)
+	}
 }

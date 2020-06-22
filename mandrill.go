@@ -19,15 +19,12 @@ type mandrillInterface interface {
 // Mandrill uses the word Message for their email
 func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err error) {
 
-	// Get the signing domain from the from address
-	sign := strings.Split(email.FromAddress, "@")
-	if len(sign) <= 1 {
-		err = fmt.Errorf("invalid from address, sign domain not found using %s", email.FromAddress)
+	// Get the signing domain from the FromAddress
+	emailParts := strings.Split(email.FromAddress, "@")
+	if len(emailParts) <= 1 || emailParts[1] == "" {
+		err = fmt.Errorf("invalid FromAddress, domain not found using: %s", email.FromAddress)
 		return
 	}
-
-	// Set the domain using the FromAddress
-	signDomain := sign[1]
 
 	// Create the Mandrill email
 	message := gochimp.Message{
@@ -37,7 +34,7 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 		Html:               email.HTMLContent,
 		Important:          email.Important,
 		PreserveRecipients: false,
-		SigningDomain:      signDomain,
+		SigningDomain:      emailParts[1],
 		Subject:            email.Subject,
 		Tags:               email.Tags,
 		Text:               email.PlainTextContent,
