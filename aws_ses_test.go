@@ -20,16 +20,6 @@ var successResult = `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2
 // mockAwsSesInterface is a mocking interface for AWS SES
 type mockAwsSesInterface struct{}
 
-// SendEmail is for mocking
-func (m *mockAwsSesInterface) SendEmail(from, to, subject, body string) (string, error) {
-	return "", nil
-}
-
-// SendEmailHTML is for mocking
-func (m *mockAwsSesInterface) SendEmailHTML(from, to, subject, bodyText, bodyHTML string) (string, error) {
-	return "", nil
-}
-
 // SendRawEmail is for mocking
 func (m *mockAwsSesInterface) SendRawEmail(raw []byte) (string, error) {
 
