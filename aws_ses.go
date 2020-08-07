@@ -11,8 +11,8 @@ import (
 
 // awsSesInterface is an interface for ses/mocking
 type awsSesInterface interface {
-	SendEmail(from, to, subject, body string) (string, error)
-	SendEmailHTML(from, to, subject, bodyText, bodyHTML string) (string, error)
+	//SendEmail(from, to, subject, body string) (string, error)
+	//SendEmailHTML(from, to, subject, bodyText, bodyHTML string) (string, error)
 	SendRawEmail(raw []byte) (string, error)
 }
 

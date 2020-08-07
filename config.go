@@ -5,8 +5,8 @@ import (
 	"net/smtp"
 
 	"github.com/mattbaird/gochimp"
+	"github.com/mrz1836/go-ses"
 	"github.com/mrz1836/postmark"
-	"github.com/sourcegraph/go-ses"
 )
 
 // ServiceProvider is the provider
@@ -34,6 +34,7 @@ type MailService struct {
 	AwsSesAccessID      string            `json:"aws_ses_access_id" mapstructure:"aws_ses_access_id"`         // aws iam access id for ses service
 	AwsSesEndpoint      string            `json:"aws_ses_endpoint" mapstructure:"aws_ses_endpoint"`           // ie: https://email.us-east-1.amazonaws.com
 	AwsSesSecretKey     string            `json:"aws_ses_secret_key" mapstructure:"aws_ses_secret_key"`       // aws iam secret key for corresponding access id
+	AwsSesRegion        string            `json:"aws_ses_region" mapstructure:"aws_ses_region"`               // AWS region
 	EmailCSS            []byte            `json:"email_css" mapstructure:"email_css"`                         // default css pre-parsed into bytes
 	FromDomain          string            `json:"from_domain" mapstructure:"from_domain"`                     // ie: example.com
 	FromName            string            `json:"from_name" mapstructure:"from_name"`                         // ie: No Reply
@@ -96,6 +97,7 @@ func (m *MailService) StartUp() (err error) {
 		if len(m.AwsSesEndpoint) > 0 {
 			m.awsConfig.Endpoint = m.AwsSesEndpoint
 		}
+		m.awsConfig.Region = m.AwsSesRegion
 
 		// Use the ses.Config
 		m.awsSesService = &m.awsConfig
