@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/PuerkitoBio/goquery v1.5.1 // indirect
 	github.com/andybalholm/cascadia v1.2.0 // indirect
+	github.com/aws/aws-sdk-go v1.34.0 // indirect
 	github.com/aymerick/douceur v0.2.0
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/gorilla/css v1.0.0 // indirect

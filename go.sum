@@ -5,6 +5,8 @@ github.com/andybalholm/cascadia v1.2.0 h1:vuRCkM5Ozh/BfmsaTm26kbjm0mIOM3yS5Ek/F5
 github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxBp0T0eFw1RUQY=
 github.com/aws/aws-sdk-go v1.33.21 h1:ziUemjajvLABlnJFe+8sM3fpqlg/DNA4944rUZ05PhY=
 github.com/aws/aws-sdk-go v1.33.21/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
+github.com/aws/aws-sdk-go v1.34.0 h1:brux2dRrlwCF5JhTL7MUT3WUwo9zfDHZZp3+g3Mvlmo=
+github.com/aws/aws-sdk-go v1.34.0/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
 github.com/aymerick/douceur v0.2.0/go.mod h1:wlT5vV2O3h55X9m7iVYN0TBM0NH/MmbLnd30/FjWUq4=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
@@ -17,16 +19,12 @@ github.com/jmespath/go-jmespath v0.3.0 h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2
 github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeYCZ7fLUTSywik=
 github.com/mattbaird/gochimp v0.0.0-20180111040707-a267553896d1 h1:dkQj0GZch2rk/ODbwy17kP5tbmPcMGiw1KYOi6Ni0/w=
 github.com/mattbaird/gochimp v0.0.0-20180111040707-a267553896d1/go.mod h1:UaYd2gciRA1AoYEN6S+EiSNFK/0XHj9e1Wgloicgh6s=
-github.com/mrz1836/go-ses v0.0.0-20200806013731-368f275e2a84 h1:tGrb/PM2a4S8pMkt/oxY+VDs3yupNgV3JZ7+NHj64PE=
-github.com/mrz1836/go-ses v0.0.0-20200806013731-368f275e2a84/go.mod h1:4YjNath+0RA31sZ5sFo8DoktCJg9eonc3otVC2iN8lQ=
 github.com/mrz1836/go-ses v0.0.1 h1:VV20XlhJo5oBDCKVt7JVMIaL9uDQMbIRo+fNuP660i8=
 github.com/mrz1836/go-ses v0.0.1/go.mod h1:MP5NcG1mUpdEhfmwgCpYACzNmjpaZU35WhmDHxDhHZM=
 github.com/mrz1836/postmark v1.2.5 h1:N6e0nS37HOKT/ybQOzimg1Tao3ZyZiVlMah5iWERqmg=
 github.com/mrz1836/postmark v1.2.5/go.mod h1:gTYtRzmadwGv9dPbny0GrGN+zFQTf2GH5bPzN/FwID8=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/sourcegraph/go-ses v0.0.0-20160405160939-6bd8d17cf7c1 h1:2Ndulo7XO8FH6BqX62+FG9Hvl1uOBwDSrE6BAkTNHtA=
-github.com/sourcegraph/go-ses v0.0.0-20160405160939-6bd8d17cf7c1/go.mod h1:7pQ21TK+WkdBIwDfMovYhmNyGeBduRj3S089GgpNQ3g=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 github.com/stretchr/testify v1.5.1/go.mod h1:5W2xD1RspED5o8YsWQXVCued0rvSQ+mT+I5cxcmMvtA=
 goji.io v2.0.2+incompatible/go.mod h1:sbqFwrtqZACxLBTQcdgVjFh54yGVCvwq8+w49MVMMIk=
