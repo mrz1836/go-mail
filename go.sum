@@ -3,8 +3,6 @@ github.com/PuerkitoBio/goquery v1.5.1/go.mod h1:GsLWisAFVj4WgDibEWF4pvYnkVQBpKBK
 github.com/andybalholm/cascadia v1.1.0/go.mod h1:GsXiBklL0woXo1j/WYWtSYYC4ouU9PqHO0sqidkEA4Y=
 github.com/andybalholm/cascadia v1.2.0 h1:vuRCkM5Ozh/BfmsaTm26kbjm0mIOM3yS5Ek/F5h18aE=
 github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxBp0T0eFw1RUQY=
-github.com/aws/aws-sdk-go v1.33.21 h1:ziUemjajvLABlnJFe+8sM3fpqlg/DNA4944rUZ05PhY=
-github.com/aws/aws-sdk-go v1.33.21/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aws/aws-sdk-go v1.34.0 h1:brux2dRrlwCF5JhTL7MUT3WUwo9zfDHZZp3+g3Mvlmo=
 github.com/aws/aws-sdk-go v1.34.0/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/aymerick/douceur v0.2.0 h1:Mv+mAeH1Q+n9Fr+oyamOlAkUNPWPlA8PPGR0QAaYuPk=
@@ -19,8 +17,8 @@ github.com/jmespath/go-jmespath v0.3.0 h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2
 github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeYCZ7fLUTSywik=
 github.com/mattbaird/gochimp v0.0.0-20180111040707-a267553896d1 h1:dkQj0GZch2rk/ODbwy17kP5tbmPcMGiw1KYOi6Ni0/w=
 github.com/mattbaird/gochimp v0.0.0-20180111040707-a267553896d1/go.mod h1:UaYd2gciRA1AoYEN6S+EiSNFK/0XHj9e1Wgloicgh6s=
-github.com/mrz1836/go-ses v0.0.1 h1:VV20XlhJo5oBDCKVt7JVMIaL9uDQMbIRo+fNuP660i8=
-github.com/mrz1836/go-ses v0.0.1/go.mod h1:MP5NcG1mUpdEhfmwgCpYACzNmjpaZU35WhmDHxDhHZM=
+github.com/mrz1836/go-ses v0.0.2 h1:TtBZbrBYg9rKcCMuFfjaOXODoAqO51JcFa2EHjAwuyc=
+github.com/mrz1836/go-ses v0.0.2/go.mod h1:uYHM3iaS1J55zU7xY43HqQ1CxFJHS8aoAArBPV/P/oc=
 github.com/mrz1836/postmark v1.2.5 h1:N6e0nS37HOKT/ybQOzimg1Tao3ZyZiVlMah5iWERqmg=
 github.com/mrz1836/postmark v1.2.5/go.mod h1:gTYtRzmadwGv9dPbny0GrGN+zFQTf2GH5bPzN/FwID8=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
