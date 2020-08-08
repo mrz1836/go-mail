@@ -22,6 +22,7 @@ const (
 
 const (
 	awsSesDefaultEndpoint = "https://email.us-east-1.amazonaws.com"
+	awsSesDefaultRegion   = "us-east-1"
 	maxBccRecipients      = 50
 	maxCcRecipients       = 50
 	maxToRecipients       = 50
@@ -74,6 +75,7 @@ func (m *MailService) StartUp() (err error) {
 
 	// Set any defaults
 	m.awsConfig.Endpoint = awsSesDefaultEndpoint
+	m.awsConfig.Region = awsSesDefaultRegion
 	m.MaxToRecipients = maxToRecipients
 	m.MaxCcRecipients = maxCcRecipients
 	m.MaxBccRecipients = maxBccRecipients
@@ -97,7 +99,9 @@ func (m *MailService) StartUp() (err error) {
 		if len(m.AwsSesEndpoint) > 0 {
 			m.awsConfig.Endpoint = m.AwsSesEndpoint
 		}
-		m.awsConfig.Region = m.AwsSesRegion
+		if len(m.AwsSesRegion) > 0 {
+			m.awsConfig.Region = m.AwsSesRegion
+		}
 
 		// Use the ses.Config
 		m.awsSesService = &m.awsConfig
