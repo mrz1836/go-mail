@@ -65,7 +65,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 - domodwyer's [mailyak](https://github.com/domodwyer/mailyak)
 - keighl's [postmark](https://github.com/mrz1836/postmark)
 - mattbaird's [gochimp](https://github.com/mattbaird/gochimp)
-- sourcegraph's [go-ses](https://github.com/sourcegraph/go-ses)
+- mrz's [go-ses](https://github.com/mrz1836/go-ses)
 - aymerick's [douceur](https://github.com/aymerick/douceur)
 </details>
 
