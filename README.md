@@ -46,7 +46,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 - Open & click tracking _(provider dependant)_
 - Inject css into html content
 - Basic template support
-- Max restrictions on To, CC and BCC
+- Max restrictions on `To`, `CC` and `BCC`
 
 <details>
 <summary><strong><code>Supported Service Providers</code></strong></summary>
