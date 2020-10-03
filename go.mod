@@ -9,7 +9,7 @@ require (
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/gorilla/css v1.0.0 // indirect
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
-	github.com/mrz1836/go-ses v0.0.8
+	github.com/mrz1836/go-ses v0.0.9
 	github.com/mrz1836/postmark v1.2.6
-	golang.org/x/net v0.0.0-20200930145003-4acb6c075d10 // indirect
+	golang.org/x/net v0.0.0-20201002202402-0a1ea396d57c // indirect
 )
