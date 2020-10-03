@@ -12,22 +12,24 @@ import (
 )
 
 // Email represents the fields of the email to send
+//
+// DO NOT CHANGE ORDER - Optimized for memory (maligned)
 type Email struct {
 	Attachments      []Attachment `json:"attachments" mapstructure:"attachments"`
-	AutoText         bool         `json:"auto_text" mapstructure:"auto_text"`
 	CSS              []byte       `json:"css" mapstructure:"css"`
-	FromAddress      string       `json:"from_address" mapstructure:"from_address"`
-	FromName         string       `json:"from_name" mapstructure:"from_name"`
-	HTMLContent      string       `json:"html_content" mapstructure:"html_content"`
-	Important        bool         `json:"important" mapstructure:"important"`
-	PlainTextContent string       `json:"plain_text_content" mapstructure:"plain_text_content"`
 	Recipients       []string     `json:"recipients" mapstructure:"recipients"`
 	RecipientsBcc    []string     `json:"recipients_bcc" mapstructure:"recipients_bcc"`
 	RecipientsCc     []string     `json:"recipients_cc" mapstructure:"recipients_cc"`
-	ReplyToAddress   string       `json:"reply_to_address" mapstructure:"reply_to_address"`
 	Styles           []byte       `json:"styles" mapstructure:"styles"`
-	Subject          string       `json:"subject" mapstructure:"subject"`
 	Tags             []string     `json:"tags" mapstructure:"tags"`
+	FromAddress      string       `json:"from_address" mapstructure:"from_address"`
+	FromName         string       `json:"from_name" mapstructure:"from_name"`
+	HTMLContent      string       `json:"html_content" mapstructure:"html_content"`
+	PlainTextContent string       `json:"plain_text_content" mapstructure:"plain_text_content"`
+	ReplyToAddress   string       `json:"reply_to_address" mapstructure:"reply_to_address"`
+	Subject          string       `json:"subject" mapstructure:"subject"`
+	AutoText         bool         `json:"auto_text" mapstructure:"auto_text"`
+	Important        bool         `json:"important" mapstructure:"important"`
 	TrackClicks      bool         `json:"track_clicks" mapstructure:"track_clicks"`
 	TrackOpens       bool         `json:"track_opens" mapstructure:"track_opens"`
 	ViewContentLink  bool         `json:"view_content_link" mapstructure:"view_content_link"`

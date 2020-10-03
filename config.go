@@ -29,36 +29,37 @@ const (
 )
 
 // MailService is the configuration to use for loading the service and provider's clients
+//
+// DO NOT CHANGE ORDER - Optimized for memory (maligned)
 type MailService struct {
-	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                         // whether or not to automatically generate a text part for messages that are not given text
+	awsConfig           ses.Config        // AWS SES config
 	AvailableProviders  []ServiceProvider `json:"available_providers" mapstructure:"available_providers"`     // list of providers that loaded successfully
+	EmailCSS            []byte            `json:"email_css" mapstructure:"email_css"`                         // default css pre-parsed into bytes
 	AwsSesAccessID      string            `json:"aws_ses_access_id" mapstructure:"aws_ses_access_id"`         // aws iam access id for ses service
 	AwsSesEndpoint      string            `json:"aws_ses_endpoint" mapstructure:"aws_ses_endpoint"`           // ie: https://email.us-east-1.amazonaws.com
 	AwsSesSecretKey     string            `json:"aws_ses_secret_key" mapstructure:"aws_ses_secret_key"`       // aws iam secret key for corresponding access id
 	AwsSesRegion        string            `json:"aws_ses_region" mapstructure:"aws_ses_region"`               // AWS region
-	EmailCSS            []byte            `json:"email_css" mapstructure:"email_css"`                         // default css pre-parsed into bytes
 	FromDomain          string            `json:"from_domain" mapstructure:"from_domain"`                     // ie: example.com
 	FromName            string            `json:"from_name" mapstructure:"from_name"`                         // ie: No Reply
 	FromUsername        string            `json:"from_username" mapstructure:"from_username"`                 // ie: no-reply
-	Important           bool              `json:"important" mapstructure:"important"`                         // whether or not this message is important, and should be delivered ahead of non-important messages
 	MandrillAPIKey      string            `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`           // mandrill api key
-	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"`       // max amount for BCC
-	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`         // max amount for CC
-	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`         // max amount for TO
 	PostmarkServerToken string            `json:"postmark_server_token" mapstructure:"postmark_server_token"` // ie: abc123...
 	SMTPHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
 	SMTPPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
-	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                         // ie: 25
-	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`                 // ie: testuser
-	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`                   // whether or not to turn on click tracking for the message
-	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`                     // whether or not to turn on open tracking for the message
-
-	awsConfig       ses.Config        // AWS SES config
-	awsSesService   awsSesInterface   // AWS SES client
-	mandrillService mandrillInterface // Mandrill api client
-	postmarkService postmarkInterface // Postmark api client
-	smtpAuth        smtp.Auth         // Auth credentials for SMTP
-	smtpClient      smtpInterface     // SMTP client
+	awsSesService       awsSesInterface   // AWS SES client
+	mandrillService     mandrillInterface // Mandrill api client
+	postmarkService     postmarkInterface // Postmark api client
+	smtpAuth            smtp.Auth         // Auth credentials for SMTP
+	smtpClient          smtpInterface     // SMTP client
+	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`           // ie: testuser
+	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"` // max amount for BCC
+	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`   // max amount for CC
+	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`   // max amount for TO
+	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                   // ie: 25
+	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                   // whether or not to automatically generate a text part for messages that are not given text
+	Important           bool              `json:"important" mapstructure:"important"`                   // whether or not this message is important, and should be delivered ahead of non-important messages
+	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`             // whether or not to turn on click tracking for the message
+	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`               // whether or not to turn on open tracking for the message
 }
 
 // StartUp is fired once to load the email service
