@@ -143,7 +143,7 @@ func TestEmail_ParseTemplate(t *testing.T) {
 	}
 
 	// Parse - missing file
-	parsedTemplate, err = email.ParseTemplate(filepath.Join("examples", "missing_file.txt"))
+	_, err = email.ParseTemplate(filepath.Join("examples", "missing_file.txt"))
 	if err == nil {
 		t.Fatalf("%s: error expected but was nil", t.Name())
 	}
@@ -184,7 +184,7 @@ func TestEmail_ParseHTMLTemplate(t *testing.T) {
 	}
 
 	// Parse - missing file
-	parsedTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "missing_file.html"))
+	_, err = email.ParseHTMLTemplate(filepath.Join("examples", "missing_file.html"))
 	if err == nil {
 		t.Fatalf("%s: error expected but was nil", t.Name())
 	}
