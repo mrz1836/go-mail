@@ -82,8 +82,8 @@ func TestMailService_StartUp(t *testing.T) {
 
 	// Add SMTP
 	service.SMTPHost = "example.com"
-	service.SMTPPassword = "fake"
-	service.SMTPUsername = "fake"
+	service.SMTPPassword = "fake-password"
+	service.SMTPUsername = "fake-username"
 	service.SMTPPort = 25
 	err = service.StartUp()
 	if err != nil {
