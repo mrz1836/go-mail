@@ -37,7 +37,7 @@ func TestMailService_StartUp(t *testing.T) {
 	service := new(MailService)
 	err := service.StartUp()
 
-	// No user name
+	// No username
 	if err == nil || err.Error() != "missing required field: from_username" {
 		t.Fatalf("%s Failed: expected an error for missing from name, error: %v", t.Name(), err)
 	}

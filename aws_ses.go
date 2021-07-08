@@ -20,15 +20,15 @@ func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
 	// Create new mail message
 	mail := mailyak.New("", nil)
 
-	// Add the to recipients
+	// Add the "to" recipients
 	mail.To(email.Recipients...)
 
-	// Add the cc recipients
+	// Add the "cc" recipients
 	if len(email.RecipientsCc) > 0 {
 		mail.Cc(email.RecipientsCc...)
 	}
 
-	// Add the bcc recipients
+	// Add the "bcc" recipients
 	if len(email.RecipientsBcc) > 0 {
 		mail.WriteBccHeader(true)
 		mail.Bcc(email.RecipientsBcc...)

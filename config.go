@@ -56,10 +56,10 @@ type MailService struct {
 	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`   // max amount for CC
 	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`   // max amount for TO
 	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                   // ie: 25
-	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                   // whether or not to automatically generate a text part for messages that are not given text
-	Important           bool              `json:"important" mapstructure:"important"`                   // whether or not this message is important, and should be delivered ahead of non-important messages
-	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`             // whether or not to turn on click tracking for the message
-	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`               // whether or not to turn on open tracking for the message
+	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                   // whether to automatically generate a text part for messages that are not given text
+	Important           bool              `json:"important" mapstructure:"important"`                   // whether this message is important, and should be delivered ahead of non-important messages
+	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`             // whether to turn on click tracking for the message
+	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`               // whether to turn on open tracking for the message
 }
 
 // StartUp is fired once to load the email service
@@ -84,7 +84,7 @@ func (m *MailService) StartUp() (err error) {
 	// If the key is set, try loading the service
 	if len(m.MandrillAPIKey) > 0 {
 
-		// Never will return an error - set new MandrillApi
+		// Will Never return an error - set new MandrillApi
 		m.mandrillService, _ = gochimp.NewMandrill(m.MandrillAPIKey)
 
 		// Add to the list of available providers

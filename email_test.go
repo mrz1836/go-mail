@@ -163,7 +163,7 @@ func TestEmail_ParseHTMLTemplate(t *testing.T) {
 
 	email := mail.NewEmail()
 
-	// Parse a HTML template into memory
+	// Parse an HTML template into memory
 	parsedTemplate, err := email.ParseHTMLTemplate(filepath.Join("examples", "example_template.html"))
 	if err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
@@ -173,7 +173,7 @@ func TestEmail_ParseHTMLTemplate(t *testing.T) {
 		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template.html", parsedTemplate.Name())
 	}
 
-	// Parse a HTML template and process CSS styles
+	// Parse an HTML template and process CSS styles
 	parsedTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
 	if err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
@@ -219,7 +219,7 @@ func TestEmail_ApplyTemplates(t *testing.T) {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
-	// Parse a HTML template and process CSS styles
+	// Parse an HTML template and process CSS styles
 	var parsedHTMLTemplate *template.Template
 	parsedHTMLTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
 	if err != nil {

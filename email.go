@@ -62,7 +62,7 @@ func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *te
 		emailData = e
 	}
 
-	// Do we have an html template?
+	// Do we have an HTML template?
 	if htmlTemplate != nil {
 
 		// Read the struct into the HTML buffer
@@ -156,7 +156,7 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 	// Do we have that provider?
 	if containsServiceProvider(m.AvailableProviders, provider) {
 
-		// Safe guard the user sending mis-configured emails
+		// Safeguard the user sending mis-configured emails
 		// These validations are standard on all providers
 		if len(email.Subject) == 0 {
 			err = fmt.Errorf("email is missing a subject")

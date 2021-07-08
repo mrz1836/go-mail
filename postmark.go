@@ -40,7 +40,7 @@ func sendViaPostmark(client postmarkInterface, email *Email) (err error) {
 		log.Printf("warning: auto text is enabled, but Postmark does not offer this feature")
 	}
 
-	// Set the from name if given
+	// Set the "from" name if given
 	if len(email.FromName) > 0 {
 		postmarkEmail.From = email.FromName + " " + email.FromAddress
 	}

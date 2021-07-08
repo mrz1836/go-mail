@@ -14,6 +14,8 @@ type mockMandrillInterface struct{}
 // MessageSend is for mocking
 func (m *mockMandrillInterface) MessageSend(message gochimp.Message, async bool) ([]gochimp.SendResponse, error) {
 
+	// todo: is async (bool) needed?
+
 	// Success
 	if message.To[0].Email == "test@domain.com" {
 		return []gochimp.SendResponse{}, nil

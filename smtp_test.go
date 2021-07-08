@@ -29,7 +29,7 @@ func (m *mockSMTPInterface) Send() error {
 			return nil
 		}
 
-		// Bad user name - Auth
+		// Bad username - Auth
 		if m.toAddrs[0] == "test@badusername.com" {
 			return fmt.Errorf("535 5.7.8")
 		}

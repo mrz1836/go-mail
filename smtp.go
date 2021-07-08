@@ -40,15 +40,15 @@ func newSMTPClient(host string, auth smtp.Auth) smtpInterface {
 // sendViaSMTP sends an email using the smtp service
 func sendViaSMTP(client smtpInterface, email *Email) (err error) {
 
-	// Add the to recipients
+	// Add the "to" recipients
 	client.To(email.Recipients...)
 
-	// Add the cc recipients
+	// Add the "cc" recipients
 	if len(email.RecipientsCc) > 0 {
 		client.Cc(email.RecipientsCc...)
 	}
 
-	// Add the bcc recipients
+	// Add the "bcc" recipients
 	if len(email.RecipientsBcc) > 0 {
 		client.WriteBccHeader(true)
 		client.Bcc(email.RecipientsBcc...)
