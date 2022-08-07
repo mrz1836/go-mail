@@ -14,18 +14,20 @@ ifeq ($(REPO_OWNER),)
 	REPO_OWNER="mrz1836"
 endif
 
-.PHONY: clean
-
+.PHONY: all
 all: ## Runs multiple commands
 	@$(MAKE) test
 
+.PHONY: clean
 clean: ## Remove previous builds and any test cache data
 	@go clean -cache -testcache -i -r
 	@test $(DISTRIBUTIONS_DIR)
 	@if [ -d $(DISTRIBUTIONS_DIR) ]; then rm -r $(DISTRIBUTIONS_DIR); fi
 
+.PHONY: release
 release:: ## Runs common.release then runs godocs
 	@$(MAKE) godocs
 
+.PHONY: run-examples
 run-examples: ## Runs all the examples
 	@go run examples/examples.go
