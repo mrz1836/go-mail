@@ -1,9 +1,10 @@
 package gomail
 
 import (
+	"context"
 	"fmt"
 	"html/template"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"testing"
 )
@@ -215,7 +216,7 @@ func TestEmail_ApplyTemplates(t *testing.T) {
 	}
 
 	// Set the css theme
-	if email.CSS, err = ioutil.ReadFile(filepath.Join("examples", "example_theme.css")); err != nil {
+	if email.CSS, err = os.ReadFile(filepath.Join("examples", "example_theme.css")); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
@@ -292,22 +293,22 @@ func TestMailService_SendEmail(t *testing.T) {
 	email.Recipients = append(email.Recipients, "someone@domain.com")
 
 	// Valid (Postmark)
-	if err = mail.SendEmail(email, Postmark); err != nil {
+	if err = mail.SendEmail(context.Background(), email, Postmark); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
 	// Valid (AWS SES)
-	if err = mail.SendEmail(email, AwsSes); err != nil {
+	if err = mail.SendEmail(context.Background(), email, AwsSes); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
 	// Valid (Mandrill)
-	if err = mail.SendEmail(email, Mandrill); err != nil {
+	if err = mail.SendEmail(context.Background(), email, Mandrill); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 
 	// Valid (SMTP)
-	if err = mail.SendEmail(email, SMTP); err != nil {
+	if err = mail.SendEmail(context.Background(), email, SMTP); err != nil {
 		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
 	}
 }
@@ -339,33 +340,33 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 	email := mail.NewEmail()
 
 	// Invalid provider
-	err = mail.SendEmail(email, 999)
+	err = mail.SendEmail(context.Background(), email, 999)
 	if err == nil {
 		t.Fatalf("%s: error was expected, provider was invalid", t.Name())
 	}
 
 	// Invalid provider - not in available list
-	err = mail.SendEmail(email, AwsSes)
+	err = mail.SendEmail(context.Background(), email, AwsSes)
 	if err == nil {
 		t.Fatalf("%s: error was expected, provider was not in available list", t.Name())
 	}
 
 	// Invalid - subject
-	err = mail.SendEmail(email, Postmark)
+	err = mail.SendEmail(context.Background(), email, Postmark)
 	if err == nil {
 		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
 	}
 	email.Subject = "Subject exits now"
 
 	// Invalid - plain text missing
-	err = mail.SendEmail(email, Postmark)
+	err = mail.SendEmail(context.Background(), email, Postmark)
 	if err == nil {
 		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
 	}
 	email.PlainTextContent = "Plain text exits now"
 
 	// Invalid - recipients missing
-	err = mail.SendEmail(email, Postmark)
+	err = mail.SendEmail(context.Background(), email, Postmark)
 	if err == nil {
 		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
 	}
@@ -375,7 +376,7 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 	for recipients := 1; recipients <= maxToRecipients+1; recipients++ {
 		email.Recipients = append(email.Recipients, "someone@domain.com")
 	}
-	if err = mail.SendEmail(email, Postmark); err == nil {
+	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
 		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.Recipients))
 	}
 	email.Recipients = []string{"someone@domain.com"}
@@ -384,7 +385,7 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 	for recipients := 1; recipients <= maxCcRecipients+1; recipients++ {
 		email.RecipientsCc = append(email.RecipientsCc, "someone@domain.com")
 	}
-	if err = mail.SendEmail(email, Postmark); err == nil {
+	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
 		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.RecipientsCc))
 	}
 	email.RecipientsCc = []string{"someone@domain.com"}
@@ -393,7 +394,7 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 	for recipients := 1; recipients <= maxBccRecipients+1; recipients++ {
 		email.RecipientsBcc = append(email.RecipientsBcc, "someone@domain.com")
 	}
-	if err = mail.SendEmail(email, Postmark); err == nil {
+	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
 		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.RecipientsBcc))
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"strings"
 
 	"github.com/mattbaird/gochimp"
@@ -82,7 +82,7 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 		// Read all content from the attachment
 		reader := bufio.NewReader(attachment.FileReader)
 		var content []byte
-		if content, err = ioutil.ReadAll(reader); err != nil {
+		if content, err = io.ReadAll(reader); err != nil {
 			return
 		}
 

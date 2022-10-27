@@ -1,11 +1,13 @@
+// Package gomail is a lightweight email package with multi-provider support
 package gomail
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"html/template"
 	"io"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/aymerick/douceur/inliner"
@@ -104,7 +106,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 
 	// Read HTML template file
 	var tempBytes []byte
-	if tempBytes, err = ioutil.ReadFile(htmlLocation); err != nil {
+	if tempBytes, err = os.ReadFile(htmlLocation); err != nil {
 		return
 	}
 
@@ -151,7 +153,7 @@ func (m *MailService) NewEmail() (email *Email) {
 }
 
 // SendEmail will send an email using the given provider
-func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err error) {
+func (m *MailService) SendEmail(ctx context.Context, email *Email, provider ServiceProvider) (err error) {
 
 	// Do we have that provider?
 	if containsServiceProvider(m.AvailableProviders, provider) {
@@ -184,7 +186,7 @@ func (m *MailService) SendEmail(email *Email, provider ServiceProvider) (err err
 		} else if provider == Mandrill {
 			err = sendViaMandrill(m.mandrillService, email, false)
 		} else if provider == Postmark {
-			err = sendViaPostmark(m.postmarkService, email)
+			err = sendViaPostmark(ctx, m.postmarkService, email)
 		} else if provider == SMTP {
 			err = sendViaSMTP(m.smtpClient, email)
 		}
