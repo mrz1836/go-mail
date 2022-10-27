@@ -1,6 +1,7 @@
 package gomail
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"os"
@@ -13,7 +14,7 @@ import (
 type mockPostmarkInterface struct{}
 
 // SendEmail is for mocking
-func (m *mockPostmarkInterface) SendEmail(email postmark.Email) (postmark.EmailResponse, error) {
+func (m *mockPostmarkInterface) SendEmail(_ context.Context, email postmark.Email) (postmark.EmailResponse, error) {
 
 	// Success
 	if email.To == "test@domain.com" {
@@ -96,7 +97,7 @@ func TestSendViaPostmark(t *testing.T) {
 		email.RecipientsCc = []string{test.input}
 		email.RecipientsBcc = []string{test.input}
 		email.ReplyToAddress = test.input
-		if err = sendViaPostmark(client, email); err != nil && !test.expectedError {
+		if err = sendViaPostmark(context.Background(), client, email); err != nil && !test.expectedError {
 			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
 		} else if err == nil && test.expectedError {
 			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)

@@ -2,9 +2,10 @@ package gomail
 
 import (
 	"bufio"
+	"context"
 	"encoding/base64"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"strings"
 
@@ -13,11 +14,11 @@ import (
 
 // postmarkInterface is an interface for Postmark/mocking
 type postmarkInterface interface {
-	SendEmail(email postmark.Email) (postmark.EmailResponse, error)
+	SendEmail(ctx context.Context, email postmark.Email) (postmark.EmailResponse, error)
 }
 
 // sendViaPostmark sends an email using the Postmark service
-func sendViaPostmark(client postmarkInterface, email *Email) (err error) {
+func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email) (err error) {
 
 	// Create the email struct
 	postmarkEmail := postmark.Email{
@@ -73,7 +74,7 @@ func sendViaPostmark(client postmarkInterface, email *Email) (err error) {
 		// Read all content from the attachment
 		reader := bufio.NewReader(attachment.FileReader)
 		var content []byte
-		if content, err = ioutil.ReadAll(reader); err != nil {
+		if content, err = io.ReadAll(reader); err != nil {
 			return
 		}
 
@@ -96,7 +97,7 @@ func sendViaPostmark(client postmarkInterface, email *Email) (err error) {
 
 	// Send the email
 	var resp postmark.EmailResponse
-	if resp, err = client.SendEmail(postmarkEmail); err != nil {
+	if resp, err = client.SendEmail(ctx, postmarkEmail); err != nil {
 		return
 	}
 
