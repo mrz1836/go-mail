@@ -80,40 +80,40 @@ func (m *mockSMTPInterface) To(addrs ...string) {
 }
 
 // Bcc is a mock method
-func (m *mockSMTPInterface) Bcc(addrs ...string) {}
+func (m *mockSMTPInterface) Bcc(_ ...string) {}
 
 // WriteBccHeader is a mock method
-func (m *mockSMTPInterface) WriteBccHeader(shouldWrite bool) {}
+func (m *mockSMTPInterface) WriteBccHeader(_ bool) {}
 
 // Cc is a mock method
-func (m *mockSMTPInterface) Cc(addrs ...string) {}
+func (m *mockSMTPInterface) Cc(_ ...string) {}
 
 // From is a mock method
-func (m *mockSMTPInterface) From(addr string) {}
+func (m *mockSMTPInterface) From(_ string) {}
 
 // FromName is a mock method
-func (m *mockSMTPInterface) FromName(name string) {}
+func (m *mockSMTPInterface) FromName(_ string) {}
 
 // ReplyTo is a mock method
-func (m *mockSMTPInterface) ReplyTo(addr string) {}
+func (m *mockSMTPInterface) ReplyTo(_ string) {}
 
 // Subject is a mock method
-func (m *mockSMTPInterface) Subject(sub string) {}
+func (m *mockSMTPInterface) Subject(_ string) {}
 
 // AddHeader is a mock method
-func (m *mockSMTPInterface) AddHeader(name, value string) {}
+func (m *mockSMTPInterface) AddHeader(_, _ string) {}
 
 // Attach is a mock method
-func (m *mockSMTPInterface) Attach(name string, r io.Reader) {}
+func (m *mockSMTPInterface) Attach(_ string, _ io.Reader) {}
 
 // AttachWithMimeType is a mock method
-func (m *mockSMTPInterface) AttachWithMimeType(name string, r io.Reader, mimeType string) {}
+func (m *mockSMTPInterface) AttachWithMimeType(_ string, _ io.Reader, _ string) {}
 
 // AttachInline is a mock method
-func (m *mockSMTPInterface) AttachInline(name string, r io.Reader) {}
+func (m *mockSMTPInterface) AttachInline(_ string, _ io.Reader) {}
 
 // AttachInlineWithMimeType is a mock method
-func (m *mockSMTPInterface) AttachInlineWithMimeType(name string, r io.Reader, mimeType string) {}
+func (m *mockSMTPInterface) AttachInlineWithMimeType(_ string, _ io.Reader, _ string) {}
 
 // ClearAttachments is a mock method
 func (m *mockSMTPInterface) ClearAttachments() {}
