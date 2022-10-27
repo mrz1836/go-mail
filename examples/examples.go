@@ -4,6 +4,7 @@ Package main is examples using the go-mail package
 package main
 
 import (
+	"context"
 	"log"
 	"os"
 	"strconv"
@@ -71,7 +72,7 @@ func awsSesExample() {
 	email.Subject = "example go-mail email using AWS SES"
 
 	// Send the email
-	if err = mail.SendEmail(email, provider); err != nil {
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
@@ -115,7 +116,7 @@ func mandrillExample() {
 	email.Subject = "example go-mail email using Mandrill"
 
 	// Send the email
-	if err = mail.SendEmail(email, provider); err != nil {
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
@@ -159,7 +160,7 @@ func postmarkExample() {
 	email.Subject = "example go-mail email using Postmark"
 
 	// Send the email
-	if err = mail.SendEmail(email, provider); err != nil {
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
@@ -212,7 +213,7 @@ func smtpExample() {
 	email.Subject = "example go-mail email using SMTP"
 
 	// Send the email
-	if err = mail.SendEmail(email, provider); err != nil {
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 	log.Printf("email sent!")
@@ -279,7 +280,7 @@ func allOptionsExample() {
 	}
 
 	// Send the email (basic example using one provider)
-	if err = mail.SendEmail(email, provider); err != nil {
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
 		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
 	}
 
