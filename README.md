@@ -2,7 +2,7 @@
 > Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/))
 
 [![Release](https://img.shields.io/github/release-pre/mrz1836/go-mail.svg?logo=github&style=flat&v=1)](https://github.com/mrz1836/go-mail/releases)
-[![Build Status](https://img.shields.io/github/workflow/status/mrz1836/go-mail/run-go-tests?logo=github&v=3)](https://github.com/mrz1836/go-mail/actions)
+[![Build Status](https://img.shields.io/github/actions/workflow/status/mrz1836/go-mail/run-tests.yml?branch=master&logo=github&v=3)](https://github.com/mrz1836/go-mail/actions)
 [![Report](https://goreportcard.com/badge/github.com/mrz1836/go-mail?style=flat&v=1)](https://goreportcard.com/report/github.com/mrz1836/go-mail)
 [![codecov](https://codecov.io/gh/mrz1836/go-mail/branch/master/graph/badge.svg)](https://codecov.io/gh/mrz1836/go-mail)
 [![Go](https://img.shields.io/github/go-mod/go-version/mrz1836/go-mail)](https://golang.org/)
