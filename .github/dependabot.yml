@@ -1,4 +1,4 @@
-# Basic dependabot.yml to update gomod
+# Basic dependabot.yml to update gomod and github-actions
 
 version: 2
 updates:
