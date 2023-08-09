@@ -12,7 +12,7 @@ import (
 type mockMandrillInterface struct{}
 
 // MessageSend is for mocking
-func (m *mockMandrillInterface) MessageSend(message gochimp.Message, async bool) ([]gochimp.SendResponse, error) {
+func (m *mockMandrillInterface) MessageSend(message gochimp.Message, _ bool) ([]gochimp.SendResponse, error) {
 
 	// todo: is async (bool) needed?
 
