@@ -19,8 +19,8 @@ github.com/jmespath/go-jmespath/internal/testify v1.5.1 h1:shLQSRRSCCPj3f2gpwzGw
 github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfCI6z80xFu9LTZmf1ZRjMHUOPmWr69U=
 github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f h1:Sbn1gG/7kAsH27zPoR+VzwC8pag/rfhbptoZAgCZKeE=
 github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f/go.mod h1:UaYd2gciRA1AoYEN6S+EiSNFK/0XHj9e1Wgloicgh6s=
-github.com/mrz1836/go-ses v0.1.1 h1:gbFFIrWHeOTE3x7FUL+RUB3JgqIg4YPDMMB8Pqjp200=
-github.com/mrz1836/go-ses v0.1.1/go.mod h1:szreKTIRbFnH4iY/1rV7tihsyMvTifrasY+D6eLLuME=
+github.com/mrz1836/go-ses v0.2.0 h1:+OfKaWsjDo6Llfa8r+QgtU3BBBKzJervzYWN+ZkERlE=
+github.com/mrz1836/go-ses v0.2.0/go.mod h1:2QVXJwRfjzT+7rKZKuwXJF+q3eAaVH61Hs7yLzwGeeE=
 github.com/mrz1836/postmark v1.5.0 h1:5Cb1J1ylPvGkSwFafD5OZOKZ453mN9WrSND+GRtp2GM=
 github.com/mrz1836/postmark v1.5.0/go.mod h1:6z5MxAH00Kj44owtQaryv9Pbqp5OKT3wWcRSydB0p0A=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
