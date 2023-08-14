@@ -21,8 +21,8 @@ github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f h1:Sbn1gG/7kAsH2
 github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f/go.mod h1:UaYd2gciRA1AoYEN6S+EiSNFK/0XHj9e1Wgloicgh6s=
 github.com/mrz1836/go-ses v0.2.0 h1:+OfKaWsjDo6Llfa8r+QgtU3BBBKzJervzYWN+ZkERlE=
 github.com/mrz1836/go-ses v0.2.0/go.mod h1:2QVXJwRfjzT+7rKZKuwXJF+q3eAaVH61Hs7yLzwGeeE=
-github.com/mrz1836/postmark v1.6.0 h1:AHo9Flg7WXT+XL2/9qdxz4qil9LgawWaJK+qTCf/fSI=
-github.com/mrz1836/postmark v1.6.0/go.mod h1:6z5MxAH00Kj44owtQaryv9Pbqp5OKT3wWcRSydB0p0A=
+github.com/mrz1836/postmark v1.6.1 h1:UHAs9WuZEBZj12MdZ/iVRyoC4tq3ODTdYhE17OhJeJ4=
+github.com/mrz1836/postmark v1.6.1/go.mod h1:6z5MxAH00Kj44owtQaryv9Pbqp5OKT3wWcRSydB0p0A=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
