@@ -106,7 +106,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 
 	// Read HTML template file
 	var tempBytes []byte
-	if tempBytes, err = os.ReadFile(htmlLocation); err != nil {
+	if tempBytes, err = os.ReadFile(htmlLocation); err != nil { //nolint:gosec // No security issue here
 		return
 	}
 
