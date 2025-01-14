@@ -16,5 +16,5 @@ require (
 	github.com/aws/aws-sdk-go v1.54.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
-	golang.org/x/net v0.26.0 // indirect
+	golang.org/x/net v0.33.0 // indirect
 )
