@@ -1,13 +1,14 @@
 module github.com/mrz1836/go-mail
 
 go 1.19
+toolchain go1.24.1
 
 require (
 	github.com/aymerick/douceur v0.2.0
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
 	github.com/mrz1836/go-ses v0.3.3
-	github.com/mrz1836/postmark v1.7.0
+	github.com/mrz1836/postmark v1.7.1
 )
 
 require (
