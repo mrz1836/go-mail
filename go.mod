@@ -7,7 +7,7 @@ require (
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
 	github.com/mrz1836/go-ses v0.3.3
-	github.com/mrz1836/postmark v1.7.1
+	github.com/mrz1836/postmark v1.7.2
 )
 
 require (
