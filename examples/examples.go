@@ -79,7 +79,7 @@ func awsSesExample() {
 }
 
 // mandrillExample shows an example using Mandrill as the provider
-func mandrillExample() {
+func mandrillExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
@@ -123,7 +123,7 @@ func mandrillExample() {
 }
 
 // postmarkExample shows an example using Postmark as the provider
-func postmarkExample() {
+func postmarkExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
@@ -167,7 +167,7 @@ func postmarkExample() {
 }
 
 // smtpExample shows an example using SMTP as the provider
-func smtpExample() {
+func smtpExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
@@ -219,8 +219,8 @@ func smtpExample() {
 	log.Printf("email sent!")
 }
 
-// allOptionsExample is using the most amount of options/features
-func allOptionsExample() {
+// allOptionsExample is using the most number of options/features
+func allOptionsExample() { //nolint:unused // this is an example function
 
 	// Define your service configuration
 	mail := new(gomail.MailService)

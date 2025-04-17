@@ -47,7 +47,7 @@ func (m *mockSMTPInterface) Send() error {
 
 // MimeBuf will mock the mime type
 func (m *mockSMTPInterface) MimeBuf() (*bytes.Buffer, error) {
-	return nil, nil
+	return &bytes.Buffer{}, nil
 }
 
 // String is a mock method

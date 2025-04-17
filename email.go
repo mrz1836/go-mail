@@ -114,7 +114,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 	if bytes.Contains(tempBytes, []byte("{{.Styles}}")) && len(e.CSS) > 0 {
 
 		// Inject styles
-		tempBytes = bytes.Replace(tempBytes, []byte("{{.Styles}}"), e.CSS, -1)
+		tempBytes = bytes.ReplaceAll(tempBytes, []byte("{{.Styles}}"), e.CSS)
 		var tempString string
 		if tempString, err = inliner.Inline(string(tempBytes)); err != nil {
 			return
@@ -180,15 +180,18 @@ func (m *MailService) SendEmail(ctx context.Context, email *Email, provider Serv
 			return
 		}
 
-		// Send via given provider
-		if provider == AwsSes {
+		// Send it via a given provider
+		switch provider {
+		case AwsSes:
 			err = sendViaAwsSes(m.awsSesService, email)
-		} else if provider == Mandrill {
-			err = sendViaMandrill(m.mandrillService, email, false)
-		} else if provider == Postmark {
+		case Mandrill:
+			err = sendViaMandrill(m.mandrillService, email, true)
+		case Postmark:
 			err = sendViaPostmark(ctx, m.postmarkService, email)
-		} else if provider == SMTP {
+		case SMTP:
 			err = sendViaSMTP(m.smtpClient, email)
+		default:
+			err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent", provider, m.AvailableProviders)
 		}
 	} else {
 		err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent", provider, m.AvailableProviders)
