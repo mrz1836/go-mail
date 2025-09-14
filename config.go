@@ -1,11 +1,14 @@
 package gomail
 
 import (
+	"context"
 	"fmt"
 	"net/smtp"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/mattbaird/gochimp"
-	"github.com/mrz1836/go-ses"
 	"github.com/mrz1836/postmark"
 )
 
@@ -32,7 +35,6 @@ const (
 //
 // DO NOT CHANGE ORDER - Optimized for memory (maligned)
 type MailService struct {
-	awsConfig           ses.Config        // AWS SES config
 	AvailableProviders  []ServiceProvider `json:"available_providers" mapstructure:"available_providers"`     // list of providers that loaded successfully
 	EmailCSS            []byte            `json:"email_css" mapstructure:"email_css"`                         // default css pre-parsed into bytes
 	AwsSesAccessID      string            `json:"aws_ses_access_id" mapstructure:"aws_ses_access_id"`         // aws iam access id for ses service
@@ -64,7 +66,6 @@ type MailService struct {
 
 // StartUp is fired once to load the email service
 func (m *MailService) StartUp() (err error) {
-
 	// Required to have user and domain
 	if len(m.FromUsername) == 0 {
 		err = fmt.Errorf("missing required field: from_username")
@@ -75,8 +76,6 @@ func (m *MailService) StartUp() (err error) {
 	}
 
 	// Set any defaults
-	m.awsConfig.Endpoint = awsSesDefaultEndpoint
-	m.awsConfig.Region = awsSesDefaultRegion
 	m.MaxToRecipients = maxToRecipients
 	m.MaxCcRecipients = maxCcRecipients
 	m.MaxBccRecipients = maxBccRecipients
@@ -94,18 +93,37 @@ func (m *MailService) StartUp() (err error) {
 	// If the AWS SES credentials exist
 	if len(m.AwsSesAccessID) > 0 && len(m.AwsSesSecretKey) > 0 {
 
-		// Set the credentials
-		m.awsConfig.AccessKeyID = m.AwsSesAccessID
-		m.awsConfig.SecretAccessKey = m.AwsSesSecretKey
-		if len(m.AwsSesEndpoint) > 0 {
-			m.awsConfig.Endpoint = m.AwsSesEndpoint
-		}
+		// Set the region (default to us-east-1 if not provided)
+		region := awsSesDefaultRegion
 		if len(m.AwsSesRegion) > 0 {
-			m.awsConfig.Region = m.AwsSesRegion
+			region = m.AwsSesRegion
 		}
 
-		// Use the ses.Config
-		m.awsSesService = &m.awsConfig
+		// Create AWS config with static credentials
+		awsConfig, awsErr := config.LoadDefaultConfig(context.TODO(),
+			config.WithRegion(region),
+			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
+				m.AwsSesAccessID,
+				m.AwsSesSecretKey,
+				"",
+			)),
+		)
+		if awsErr != nil {
+			return fmt.Errorf("failed to load AWS config: %w", awsErr)
+		}
+
+		// Create SES client
+		sesClient := ses.NewFromConfig(awsConfig)
+
+		// Set custom endpoint if provided
+		if len(m.AwsSesEndpoint) > 0 {
+			sesClient = ses.NewFromConfig(awsConfig, func(o *ses.Options) {
+				o.BaseEndpoint = &m.AwsSesEndpoint
+			})
+		}
+
+		// Wrap the client with our interface implementation
+		m.awsSesService = &awsSesSdkV2Client{client: sesClient}
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, AwsSes)

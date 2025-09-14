@@ -1,5 +1,4 @@
 # Basic dependabot.yml to update gomod and github-actions
-
 version: 2
 updates:
   - package-ecosystem: "gomod"
@@ -16,7 +15,6 @@ updates:
     # Labels must be created first
     labels:
       - "update"
-
   # Maintain dependencies for GitHub Actions
   - package-ecosystem: "github-actions"
     target-branch: "master"

@@ -3,7 +3,6 @@
 # General
 # ---------------------------
 version: 2
-
 before:
   hooks:
     - make all
@@ -16,7 +15,6 @@ changelog:
       - '^.github:'
       - '^.vscode:'
       - '^test:'
-
 # ---------------------------
 # Publishers
 # ---------------------------
@@ -35,19 +33,16 @@ builds:
       - windows
       - darwin
     skip: true
-
 # ---------------------------
 # Github Release
 # ---------------------------
 release:
   prerelease: true
   name_template: "Release v{{.Version}}"
-
 # ---------------------------
 # Announce
 # ---------------------------
 announce:
-
   # See more at: https://goreleaser.com/customization/announce/#slack
   slack:
     enabled: false
@@ -56,12 +51,10 @@ announce:
     # username: ''
     # icon_emoji: ''
     # icon_url: ''
-
   # See more at: https://goreleaser.com/customization/announce/#twitter
   twitter:
     enabled: false
     message_template: '{{ .ProjectName }} {{ .Tag }} is out!'
-
   # See more at: https://goreleaser.com/customization/announce/#discord
   discord:
     enabled: false
@@ -72,7 +65,6 @@ announce:
     color: ''
     # Defaults to `https://goreleaser.com/static/avatar.png`
     icon_url: ''
-
   # See more at: https://goreleaser.com/customization/announce/#reddit
   reddit:
     enabled: false

@@ -39,7 +39,6 @@ func newSMTPClient(host string, auth smtp.Auth) smtpInterface {
 
 // sendViaSMTP sends an email using the smtp service
 func sendViaSMTP(client smtpInterface, email *Email) (err error) {
-
 	// Add the "to" recipients
 	client.To(email.Recipients...)
 

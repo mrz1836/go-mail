@@ -13,7 +13,6 @@ type mockMandrillInterface struct{}
 
 // MessageSend is for mocking
 func (m *mockMandrillInterface) MessageSend(message gochimp.Message, _ bool) ([]gochimp.SendResponse, error) {
-
 	// todo: is async (bool) needed?
 
 	// Success
@@ -84,7 +83,7 @@ func TestSendViaMandrill(t *testing.T) {
 	}
 
 	// Create the list of tests
-	var tests = []struct {
+	tests := []struct {
 		input         string
 		expectedError bool
 	}{

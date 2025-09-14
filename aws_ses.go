@@ -2,10 +2,13 @@ package gomail
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"log"
 	"strings"
 
+	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/domodwyer/mailyak"
 )
 
@@ -14,9 +17,46 @@ type awsSesInterface interface {
 	SendRawEmail(raw []byte) (string, error)
 }
 
+// awsSesSdkV2Client wraps the AWS SDK v2 SES client to implement awsSesInterface
+type awsSesSdkV2Client struct {
+	client *ses.Client
+}
+
+// SendRawEmail implements the awsSesInterface using AWS SDK v2
+func (c *awsSesSdkV2Client) SendRawEmail(raw []byte) (string, error) {
+	input := &ses.SendRawEmailInput{
+		RawMessage: &types.RawMessage{
+			Data: raw,
+		},
+	}
+
+	result, err := c.client.SendRawEmail(context.TODO(), input)
+	if err != nil {
+		return "", err
+	}
+
+	// Format response similar to what was expected from v1 SDK
+	requestID := "unknown"
+	if result.ResultMetadata.Get("RequestId") != nil {
+		if id, ok := result.ResultMetadata.Get("RequestId").(string); ok {
+			requestID = id
+		}
+	}
+
+	responseStr := fmt.Sprintf(`<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
+  <SendRawEmailResult>
+    <MessageId>%s</MessageId>
+  </SendRawEmailResult>
+  <ResponseMetadata>
+    <RequestId>%s</RequestId>
+  </ResponseMetadata>
+</SendRawEmailResponse>`, *result.MessageId, requestID)
+
+	return responseStr, nil
+}
+
 // sendViaAwsSes sends an email using the AWS SES service
 func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
-
 	// Create new mail message
 	mail := mailyak.New("", nil)
 

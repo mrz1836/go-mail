@@ -19,7 +19,6 @@ type postmarkInterface interface {
 
 // sendViaPostmark sends an email using the Postmark service
 func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email) (err error) {
-
 	// Create the email struct
 	postmarkEmail := postmark.Email{
 		From:       email.FromAddress,

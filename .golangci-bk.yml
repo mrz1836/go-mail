@@ -1,24 +1,18 @@
 # This file contains all available configuration options
 # with their default values.
-
 # options for analysis running
 run:
   # default concurrency is an available CPU number
   concurrency: 4
-
   # timeout for analysis, e.g. 30s, 5m, default is 1m
   timeout: 6m
-
   # exit code when at least one issue was found, default is 1
   issues-exit-code: 1
-
   # include test files or not, default is true
   tests: true
-
   # list of build tags, all linters use it. Default is empty list.
   build-tags:
     - mytag
-
   # by default isn't set. If set we pass it to "go list -mod={option}". From "go help modules":
   # If invoked with -mod=readonly, the go command is disallowed from the implicit
   # automatic updating of go.mod described above. Instead, it fails when any changes
@@ -32,22 +26,17 @@ run:
   # Allow multiple parallel golangci-lint instances running.
   # If false (default) - golangci-lint acquires file lock on start.
   allow-parallel-runners: false
-
 # output configuration options
 output:
   # colored-line-number|line-number|json|tab|checkstyle|code-climate, default is "colored-line-number"
   formats:
     - format: colored-line-number
-
   # print lines of code with issue, default is true
   print-issued-lines: true
-
   # print linter name in the end of issue text, default is true
   print-linter-name: true
-
   # add a prefix to the output file references; default is no prefix
   path-prefix: ""
-
 # all available settings of specific linters
 linters-settings:
   dogsled:
@@ -60,15 +49,12 @@ linters-settings:
     # report about not checking of errors in type assertions: `a := b.(MyStruct)`;
     # default is false: such cases aren't reported by default.
     check-type-assertions: false
-
     # report about assignment of errors to blank identifier: `num, _ := strconv.Atoi(numStr)`;
     # default is false: such cases aren't reported by default.
     check-blank: false
-
     # path to a file containing a list of functions to exclude from checking
     # see https://github.com/kisielk/errcheck#excluding-functions for details
     exclude-functions: fmt:.*,io/ioutil:^Read.*
-
     # path to a file containing a list of functions to exclude from checking
     # see https://github.com/kisielk/errcheck#excluding-functions for details
     #exclude: /path/to/file.txt
@@ -105,14 +91,12 @@ linters-settings:
     # Which checks should be disabled; can't be combined with 'enabled-checks'; default is empty
     disabled-checks:
       - regexpMust
-
     # Enable multiple checks by tags, run `GL_DEBUG=gocritic golangci-lint run` to see all tags and checks.
     # Empty list by default. See https://github.com/go-critic/go-critic#usage -> section "Tags".
     enabled-tags:
       - performance
     disabled-tags:
       - experimental
-
     settings: # settings passed to gocritic
       captLocal: # must be valid enabled check name
         paramsOnly: true
@@ -140,8 +124,7 @@ linters-settings:
       regexp:
       # define here regexp type values, for example
       # AUTHOR: .*@mycompany\.com
-    template:
-      ""
+    template: ""
   goimports:
     # put imports beginning with prefix after 3rd-party packages;
     # it's a comma-separated list of prefixes
@@ -150,7 +133,6 @@ linters-settings:
     # minimal confidence for issues, default is 0.8
     min-confidence: 0.8
   govet:
-
     # settings per analyzer
     settings:
       printf: # analyzer name, run `go tool vet help` to see all analyzers
@@ -159,7 +141,6 @@ linters-settings:
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Warnf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Errorf
           - (github.com/golangci/golangci-lint/pkg/logutils.Log).Fatalf
-
     # enable or disable analyzers by name
     enable:
       - atomicalign
@@ -232,7 +213,7 @@ linters-settings:
   # with golangci-lint call it on a directory with the changed file.
   #check-exported: false
   whitespace:
-    multi-if: false   # Enforces newlines (or comments) after every multi-line if statement
+    multi-if: false # Enforces newlines (or comments) after every multi-line if statement
     multi-func: false # Enforces newlines (or comments) after every multi-line function signature
   wsl:
     # If true append is only allowed to be cuddled if appending value is
@@ -257,7 +238,6 @@ linters-settings:
     # Choose whether to use the extra rules that are disabled
     # by default
     extra-rules: false
-
   # The custom section can be used to define linter plugins to be loaded at runtime. See README doc
   #  for more info.
   custom:
@@ -269,7 +249,6 @@ linters-settings:
   #description: This is an example usage of a plugin linter.
   # Intended to point to the repo location of the linter. Optional, just for documentation purposes.
   #original-url: github.com/golangci/example-linter
-
 linters:
   enable:
     - gosimple
@@ -336,16 +315,12 @@ linters:
     - bugs
     - unused
   fast: false
-
   godot:
     # check all top-level comments, not only declarations
     check-all: false
-
 issues:
-
   exclude-dirs-use-default: true
   uniq-by-line: true
-
   # which files to skip: they will be analyzed, but issues from them
   # won't be reported. Default value is empty list, but there is
   # no need to include all autogenerated files, we confidently recognize
@@ -355,7 +330,6 @@ issues:
   exclude-files:
     - ".*\\.my\\.go$"
     - lib/bad.go
-
   # which dirs to skip: issues from them won't be reported;
   # can use regexp here: generated.*, regexp is applied on full path;
   # default value is empty list, but default dirs are skipped independently
@@ -366,68 +340,55 @@ issues:
     - .github
     - .make
     - dist
-
   # List of regexps of issue texts to exclude, empty list by default.
   # But independently of this option we use default exclude patterns,
   # it can be disabled by `exclude-use-default: false`. To list all
   # excluded by default patterns execute `golangci-lint run --help`
   exclude:
     - abcdef
-
   # Excluding configuration per-path, per-linter, per-text and per-source
   exclude-rules:
     # Exclude some linters from running on tests files.
     - path: _test\.go
       linters:
         - gocyclo
-
     # Exclude known linters from partially hard-vendored code,
     # which is impossible to exclude via "nolint" comments.
     - path: internal/hmac/
       text: "weak cryptographic primitive"
       linters:
         - gosec
-
     # Exclude some staticcheck messages
     - linters:
         - staticcheck
       text: "SA1019:"
-
     # Exclude some gosec messages
     - linters:
         - gosec
       text: "G202:"
-
     # Exclude some scopelint messages
     - linters:
         - scopelint
       text: "Using the variable on range scope"
-
     # Exclude lll issues for long lines with go:generate
     - linters:
         - lll
       source: "^//go:generate "
-
   # Independently of option `exclude` we use default exclude patterns,
   # it can be disabled by this option. To list all
   # excluded by default patterns execute `golangci-lint run --help`.
   # Default value for this option is true.
   exclude-use-default: false
-
   # The default value is false. If set to true exclude and exclude-rules
   # regular expressions become case-sensitive.
   exclude-case-sensitive: false
-
   # The list of IDs of default excludes to include or disable. By default, it's empty.
   include:
     - EXC0002 # disable excluding of issues about comments from golint
-
   # Maximum issues count per one linter. Set to 0 to disable. Default is 50.
   max-issues-per-linter: 0
-
   # Maximum count of issues with the same text. Set to 0 to disable. Default is 3.
   max-same-issues: 0
-
   # Show only new issues: if there are unstaged changes or untracked files,
   # only those changes are analyzed, else only changes in HEAD~ are analyzed.
   # It's a super-useful option for integration of golangci-lint into existing
@@ -435,13 +396,10 @@ issues:
   # of integration: much better don't allow issues in new code.
   # Default is false.
   new: false
-
   # Show only new issues created after git revision `REV`
   new-from-rev: ""
-
   # Show only new issues created in git patch with set file path.
   #new-from-patch: path/to/patch/file
-
 severity:
   # Default value is empty string.
   # Set the default severity for issues. If severity rules are defined, and the issues
@@ -452,11 +410,9 @@ severity:
   # -   Checkstyle: https://checkstyle.sourceforge.io/property_types.html#severity
   # -       Github: https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-error-message
   default-severity: error
-
   # The default value is false.
   # If set to true severity-rules regular expressions become case-sensitive.
   case-sensitive: false
-
   # Default value is empty list.
   # When a list of severity rules are provided, severity information will be added to lint
   # issues. Severity rules have the same filtering capability as exclude rules except you

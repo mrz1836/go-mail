@@ -15,7 +15,6 @@ type mockPostmarkInterface struct{}
 
 // SendEmail is for mocking
 func (m *mockPostmarkInterface) SendEmail(_ context.Context, email postmark.Email) (postmark.EmailResponse, error) {
-
 	// Success
 	if email.To == "test@domain.com" {
 		return *new(postmark.EmailResponse), nil
@@ -23,7 +22,7 @@ func (m *mockPostmarkInterface) SendEmail(_ context.Context, email postmark.Emai
 
 	// Invalid domain name
 	if email.To == "test@badhostname.com" {
-		return *new(postmark.EmailResponse), fmt.Errorf("400 The 'From' address you supplied (No Reply " + email.To + ") is not a Sender Signature on your account. Please add and confirm this address in order to be able to use it in the 'From' field of your messages")
+		return *new(postmark.EmailResponse), fmt.Errorf("400 The 'From' address you supplied (No Reply %s) is not a Sender Signature on your account. Please add and confirm this address in order to be able to use it in the 'From' field of your messages", email.To)
 	}
 
 	// Invalid token
@@ -81,7 +80,7 @@ func TestSendViaPostmark(t *testing.T) {
 	}
 
 	// Create the list of tests
-	var tests = []struct {
+	tests := []struct {
 		input         string
 		expectedError bool
 	}{

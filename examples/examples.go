@@ -13,7 +13,6 @@ import (
 )
 
 func main() {
-
 	// Run the AWS SES example
 	awsSesExample()
 
@@ -32,7 +31,6 @@ func main() {
 
 // awsSesExample shows an example using AWS SES as the provider
 func awsSesExample() {
-
 	// Config
 	mail := new(gomail.MailService)
 	mail.FromName = "No Reply"

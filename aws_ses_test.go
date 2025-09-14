@@ -22,7 +22,6 @@ type mockAwsSesInterface struct{}
 
 // SendRawEmail is for mocking
 func (m *mockAwsSesInterface) SendRawEmail(raw []byte) (string, error) {
-
 	if len(raw) == 0 {
 		return "", fmt.Errorf("missing email contents")
 	}
@@ -86,7 +85,7 @@ func TestSendViaAwsSes(t *testing.T) {
 	}
 
 	// Create the list of tests
-	var tests = []struct {
+	tests := []struct {
 		input         string
 		expectedError bool
 	}{

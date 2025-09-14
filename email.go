@@ -54,8 +54,7 @@ func (e *Email) AddAttachment(name, fileType string, reader io.Reader) {
 }
 
 // ApplyTemplates will take the template files and process them with the email data (can be e or overridden)
-func (e *Email) ApplyTemplates(htmlTemplate *template.Template, textTemplate *template.Template, emailData interface{}) (err error) {
-
+func (e *Email) ApplyTemplates(htmlTemplate, textTemplate *template.Template, emailData interface{}) (err error) {
 	// Start the buffer
 	var buffer bytes.Buffer
 
@@ -103,7 +102,6 @@ func (e *Email) ParseTemplate(filename string) (parsed *template.Template, err e
 // ParseHTMLTemplate parse the template with inline style injection (html)
 // This method returns the template which should be stored in memory for quick access
 func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.Template, err error) {
-
 	// Read HTML template file
 	var tempBytes []byte
 	if tempBytes, err = os.ReadFile(htmlLocation); err != nil { //nolint:gosec // No security issue here
@@ -127,7 +125,6 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 		_, err = htmlTemplate.Parse(tempString)
 
 	} else {
-
 		// Either no style tag or no CSS set on email
 		htmlTemplate, err = e.ParseTemplate(htmlLocation)
 	}
@@ -137,7 +134,6 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 
 // NewEmail creates a new email using defaults from the service configuration
 func (m *MailService) NewEmail() (email *Email) {
-
 	// Create new email using defaults
 	email = new(Email)
 	email.AutoText = m.AutoText
@@ -154,7 +150,6 @@ func (m *MailService) NewEmail() (email *Email) {
 
 // SendEmail will send an email using the given provider
 func (m *MailService) SendEmail(ctx context.Context, email *Email, provider ServiceProvider) (err error) {
-
 	// Do we have that provider?
 	if containsServiceProvider(m.AvailableProviders, provider) {
 

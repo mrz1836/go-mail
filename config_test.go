@@ -7,7 +7,7 @@ func TestContainsServiceProvider(t *testing.T) {
 	t.Parallel()
 
 	// Create the list of tests
-	var tests = []struct {
+	tests := []struct {
 		providers []ServiceProvider
 		provider  ServiceProvider
 		expected  bool

@@ -1,8 +1,6 @@
 name: run-go-tests
-
 env:
   GO111MODULE: on
-
 on:
   pull_request:
     branches:
@@ -10,13 +8,12 @@ on:
   push:
     branches:
       - "*"
-
 jobs:
   test:
     strategy:
       matrix:
-        go-version: [ 1.23.x ]
-        os: [ ubuntu-latest ]
+        go-version: [1.24.x]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Install Go

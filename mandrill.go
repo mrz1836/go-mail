@@ -18,7 +18,6 @@ type mandrillInterface interface {
 // sendViaMandrill sends an email using the Mandrill service
 // Mandrill uses the word Message for their email
 func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err error) {
-
 	// Get the signing domain from the FromAddress
 	emailParts := strings.Split(email.FromAddress, "@")
 	if len(emailParts) <= 1 || emailParts[1] == "" {

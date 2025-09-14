@@ -176,7 +176,7 @@ func TestSendViaSMTP(t *testing.T) {
 	}
 
 	// Create the list of tests
-	var tests = []struct {
+	tests := []struct {
 		input         string
 		expectedError bool
 	}{
