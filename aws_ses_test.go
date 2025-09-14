@@ -10,6 +10,8 @@ import (
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
 	"github.com/aws/smithy-go/middleware"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // getSuccessResult returns a successful AWS SES response
@@ -85,33 +87,34 @@ func TestSendViaAwsSes(t *testing.T) {
 
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
-	if err != nil {
-		t.Fatalf("failed to attach file: %s", err.Error())
-	} else {
-		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
-	}
+	require.NoError(t, err)
+	email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 
 	// Create the list of tests
 	tests := []struct {
+		name          string
 		input         string
 		expectedError bool
 	}{
-		{"test@domain.com", false},
-		{"test@badhostname.com", true},
-		{"test@badresult.com", true},
+		{"successful send", "test@domain.com", false},
+		{"bad hostname", "test@badhostname.com", true},
+		{"bad result", "test@badresult.com", true},
 	}
 
 	// Loop tests
 	for _, test := range tests {
-		email.Recipients = []string{test.input}
-		email.RecipientsCc = []string{test.input}
-		email.RecipientsBcc = []string{test.input}
-		email.ReplyToAddress = test.input
-		if err = sendViaAwsSes(client, email); err != nil && !test.expectedError {
-			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
-		} else if err == nil && test.expectedError {
-			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			email.Recipients = []string{test.input}
+			email.RecipientsCc = []string{test.input}
+			email.RecipientsBcc = []string{test.input}
+			email.ReplyToAddress = test.input
+			err := sendViaAwsSes(client, email)
+			if test.expectedError {
+				require.Error(t, err)
+			} else {
+				require.NoError(t, err)
+			}
+		})
 	}
 }
 
@@ -305,20 +308,13 @@ func TestAwsSesSdkV2Client_SendRawEmail(t *testing.T) {
 			result, err := client.SendRawEmail(tt.rawEmail)
 
 			if tt.expectedError {
-				if err == nil {
-					t.Errorf("expected error but got none")
-				}
+				require.Error(t, err)
 				return
 			}
 
-			if err != nil {
-				t.Errorf("unexpected error: %v", err)
-				return
-			}
+			require.NoError(t, err)
 
-			if result != tt.expectedOutput {
-				t.Errorf("expected output:\n%s\n\ngot:\n%s", tt.expectedOutput, result)
-			}
+			assert.Equal(t, tt.expectedOutput, result)
 		})
 	}
 }
@@ -330,12 +326,8 @@ func TestAwsSesSdkV2Client_SendRawEmail_InputValidation(t *testing.T) {
 	mockClient := &mockSESClient{
 		sendRawEmailFunc: func(_ context.Context, params *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
 			// Verify the input structure is correct
-			if params.RawMessage == nil {
-				t.Error("RawMessage should not be nil")
-			}
-			if params.RawMessage.Data == nil {
-				t.Error("RawMessage.Data should not be nil")
-			}
+			require.NotNil(t, params.RawMessage)
+			require.NotNil(t, params.RawMessage.Data)
 
 			messageID := "validation-test-id"
 			metadata := middleware.Metadata{}
@@ -353,7 +345,5 @@ func TestAwsSesSdkV2Client_SendRawEmail_InputValidation(t *testing.T) {
 
 	testData := []byte("test email data")
 	_, err := client.SendRawEmail(testData)
-	if err != nil {
-		t.Errorf("unexpected error: %v", err)
-	}
+	require.NoError(t, err)
 }

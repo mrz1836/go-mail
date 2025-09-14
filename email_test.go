@@ -7,6 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -29,25 +32,15 @@ func TestMailService_NewEmail(t *testing.T) {
 
 	email := mail.NewEmail()
 
-	if email.FromAddress != mail.FromUsername+"@"+mail.FromDomain {
-		t.Fatalf("%s: FromAddress is invalid", t.Name())
-	}
+	assert.Equal(t, mail.FromUsername+"@"+mail.FromDomain, email.FromAddress)
 
-	if email.ReplyToAddress != email.FromAddress {
-		t.Fatalf("%s: ReplyToAddress is invalid", t.Name())
-	}
+	assert.Equal(t, email.FromAddress, email.ReplyToAddress)
 
-	if !email.AutoText {
-		t.Fatalf("%s: AutoText is invalid", t.Name())
-	}
+	assert.True(t, email.AutoText)
 
-	if !email.Important {
-		t.Fatalf("%s: Important is invalid", t.Name())
-	}
+	assert.True(t, email.Important)
 
-	if email.FromName != mail.FromName {
-		t.Fatalf("%s: FromName is invalid", t.Name())
-	}
+	assert.Equal(t, mail.FromName, email.FromName)
 }
 
 // ExampleMailService_NewEmail example using the NewEmail()
@@ -86,17 +79,13 @@ func TestEmail_AddAttachment(t *testing.T) {
 	email.AddAttachment("testName", "testType", nil)
 	email.AddAttachment("testName2", "testType2", nil)
 
-	if len(email.Attachments) != 2 {
-		t.Fatalf("%s: expected 2 attachments, got: %d", t.Name(), len(email.Attachments))
-	}
+	assert.Len(t, email.Attachments, 2)
 
-	if email.Attachments[0].FileName != "testName" || email.Attachments[0].FileType != "testType" {
-		t.Fatalf("%s: expected value was wrong, got: %s", t.Name(), email.Attachments[0].FileName)
-	}
+	assert.Equal(t, "testName", email.Attachments[0].FileName)
+	assert.Equal(t, "testType", email.Attachments[0].FileType)
 
-	if email.Attachments[1].FileName != "testName2" || email.Attachments[1].FileType != "testType2" {
-		t.Fatalf("%s: expected value was wrong, got: %s", t.Name(), email.Attachments[0].FileName)
-	}
+	assert.Equal(t, "testName2", email.Attachments[1].FileName)
+	assert.Equal(t, "testType2", email.Attachments[1].FileType)
 }
 
 // ExampleEmail_AddAttachment example using the AddAttachment()
@@ -141,19 +130,13 @@ func TestEmail_ParseTemplate(t *testing.T) {
 
 	// Parse a text template into memory
 	parsedTemplate, err := email.ParseTemplate(filepath.Join("examples", "example_template.txt"))
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	} else if parsedTemplate == nil {
-		t.Fatalf("%s: template was nil", t.Name())
-	} else if parsedTemplate.Name() != "example_template.txt" {
-		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template.txt", parsedTemplate.Name())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, parsedTemplate)
+	assert.Equal(t, "example_template.txt", parsedTemplate.Name())
 
 	// Parse - missing file
 	_, err = email.ParseTemplate(filepath.Join("examples", "missing_file.txt"))
-	if err == nil {
-		t.Fatalf("%s: error expected but was nil", t.Name())
-	}
+	require.Error(t, err)
 }
 
 // TestEmail_ParseHTMLTemplate tests the method ParseHTMLTemplate()
@@ -172,29 +155,19 @@ func TestEmail_ParseHTMLTemplate(t *testing.T) {
 
 	// Parse an HTML template into memory
 	parsedTemplate, err := email.ParseHTMLTemplate(filepath.Join("examples", "example_template.html"))
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	} else if parsedTemplate == nil {
-		t.Fatalf("%s: template was nil", t.Name())
-	} else if parsedTemplate.Name() != "example_template.html" {
-		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template.html", parsedTemplate.Name())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, parsedTemplate)
+	assert.Equal(t, "example_template.html", parsedTemplate.Name())
 
 	// Parse an HTML template and process CSS styles
 	parsedTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	} else if parsedTemplate == nil {
-		t.Fatalf("%s: template was nil", t.Name())
-	} else if parsedTemplate.Name() != "example_template_css.html" {
-		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template_css.html", parsedTemplate.Name())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, parsedTemplate)
+	assert.Equal(t, "example_template_css.html", parsedTemplate.Name())
 
 	// Parse - missing file
 	_, err = email.ParseHTMLTemplate(filepath.Join("examples", "missing_file.html"))
-	if err == nil {
-		t.Fatalf("%s: error expected but was nil", t.Name())
-	}
+	require.Error(t, err)
 }
 
 // TestEmail_ApplyTemplates tests the method ApplyTemplates()
@@ -213,44 +186,32 @@ func TestEmail_ApplyTemplates(t *testing.T) {
 
 	// Parse a text template into memory
 	parsedTemplate, err := email.ParseTemplate(filepath.Join("examples", "example_template.txt"))
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	} else if parsedTemplate == nil {
-		t.Fatalf("%s: template was nil", t.Name())
-	} else if parsedTemplate.Name() != "example_template.txt" {
-		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template.txt", parsedTemplate.Name())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, parsedTemplate)
+	assert.Equal(t, "example_template.txt", parsedTemplate.Name())
 
 	// Set the css theme
-	if email.CSS, err = os.ReadFile(filepath.Join("examples", "example_theme.css")); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	email.CSS, err = os.ReadFile(filepath.Join("examples", "example_theme.css"))
+	require.NoError(t, err)
 
 	// Parse an HTML template and process CSS styles
 	var parsedHTMLTemplate *template.Template
 	parsedHTMLTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	} else if parsedHTMLTemplate == nil {
-		t.Fatalf("%s: template was nil", t.Name())
-	} else if parsedHTMLTemplate.Name() != "example_template_css.html" {
-		t.Fatalf("%s: template name expected [%s] does not match [%s]", t.Name(), "example_template_css.html", parsedHTMLTemplate.Name())
-	}
+	require.NoError(t, err)
+	require.NotNil(t, parsedHTMLTemplate)
+	assert.Equal(t, "example_template_css.html", parsedHTMLTemplate.Name())
 
 	// Apply the data to the template
-	if err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, mail); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, mail)
+	require.NoError(t, err)
 
 	// Apply no data
-	if err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, nil); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, nil)
+	require.NoError(t, err)
 
 	// Get error from missing template variable
-	if err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, "no data"); err == nil {
-		t.Fatalf("%s: error should have occurred", t.Name())
-	}
+	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, "no data")
+	require.Error(t, err)
 }
 
 // TestMailService_SendEmail tests the method SendEmail()
@@ -283,9 +244,7 @@ func TestMailService_SendEmail(t *testing.T) {
 
 	// Start the mail service
 	err := mail.StartUp()
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	require.NoError(t, err)
 
 	// Set mock interface(s)
 	mail.postmarkService = &mockPostmarkInterface{}
@@ -299,24 +258,20 @@ func TestMailService_SendEmail(t *testing.T) {
 	email.Recipients = append(email.Recipients, "someone@domain.com")
 
 	// Valid (Postmark)
-	if err = mail.SendEmail(context.Background(), email, Postmark); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = mail.SendEmail(context.Background(), email, Postmark)
+	require.NoError(t, err)
 
 	// Valid (AWS SES)
-	if err = mail.SendEmail(context.Background(), email, AwsSes); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = mail.SendEmail(context.Background(), email, AwsSes)
+	require.NoError(t, err)
 
 	// Valid (Mandrill)
-	if err = mail.SendEmail(context.Background(), email, Mandrill); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = mail.SendEmail(context.Background(), email, Mandrill)
+	require.NoError(t, err)
 
 	// Valid (SMTP)
-	if err = mail.SendEmail(context.Background(), email, SMTP); err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	err = mail.SendEmail(context.Background(), email, SMTP)
+	require.NoError(t, err)
 }
 
 // TestMailService_SendEmailInValid tests the method SendEmail()
@@ -336,9 +291,7 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 
 	// Start the mail service
 	err := mail.StartUp()
-	if err != nil {
-		t.Fatalf("%s: error occurred: %s", t.Name(), err.Error())
-	}
+	require.NoError(t, err)
 
 	// Set mock interface(s)
 	mail.postmarkService = &mockPostmarkInterface{}
@@ -347,60 +300,47 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 
 	// Invalid provider
 	err = mail.SendEmail(context.Background(), email, 999)
-	if err == nil {
-		t.Fatalf("%s: error was expected, provider was invalid", t.Name())
-	}
+	require.Error(t, err)
 
 	// Invalid provider - not in available list
 	err = mail.SendEmail(context.Background(), email, AwsSes)
-	if err == nil {
-		t.Fatalf("%s: error was expected, provider was not in available list", t.Name())
-	}
+	require.Error(t, err)
 
 	// Invalid - subject
 	err = mail.SendEmail(context.Background(), email, Postmark)
-	if err == nil {
-		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
-	}
+	require.Error(t, err)
 	email.Subject = "Subject exits now"
 
 	// Invalid - plain text missing
 	err = mail.SendEmail(context.Background(), email, Postmark)
-	if err == nil {
-		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
-	}
+	require.Error(t, err)
 	email.PlainTextContent = "Plain text exits now"
 
 	// Invalid - recipients missing
 	err = mail.SendEmail(context.Background(), email, Postmark)
-	if err == nil {
-		t.Fatalf("%s: error was expected, subject was invalid", t.Name())
-	}
+	require.Error(t, err)
 	email.Recipients = append(email.Recipients, "someone@domain.com")
 
 	// Too many TO recipients
 	for recipients := 1; recipients <= maxToRecipients+1; recipients++ {
 		email.Recipients = append(email.Recipients, "someone@domain.com")
 	}
-	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
-		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.Recipients))
-	}
+	err = mail.SendEmail(context.Background(), email, Postmark)
+	require.Error(t, err)
 	email.Recipients = []string{"someone@domain.com"}
 
 	// Too many CC recipients
 	for recipients := 1; recipients <= maxCcRecipients+1; recipients++ {
 		email.RecipientsCc = append(email.RecipientsCc, "someone@domain.com")
 	}
-	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
-		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.RecipientsCc))
-	}
+	err = mail.SendEmail(context.Background(), email, Postmark)
+	require.Error(t, err)
 	email.RecipientsCc = []string{"someone@domain.com"}
 
 	// Too many BCC recipients
 	for recipients := 1; recipients <= maxBccRecipients+1; recipients++ {
 		email.RecipientsBcc = append(email.RecipientsBcc, "someone@domain.com")
 	}
-	if err = mail.SendEmail(context.Background(), email, Postmark); err == nil {
-		t.Fatalf("%s: error was expected, too many recipients, amount: %d", t.Name(), len(email.RecipientsBcc))
-	}
+	err = mail.SendEmail(context.Background(), email, Postmark)
+	require.Error(t, err)
 }

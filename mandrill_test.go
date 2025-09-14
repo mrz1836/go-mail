@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/mattbaird/gochimp"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -82,38 +84,43 @@ func TestSendViaMandrill(t *testing.T) {
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
 	if err != nil {
-		t.Fatalf("failed to attach file: %s", err.Error())
+		require.NoError(t, err, "failed to attach file")
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
 
 	// Create the list of tests
 	tests := []struct {
+		name          string
 		input         string
 		expectedError bool
 	}{
-		{"test@domain.com", false},
-		{"test@badhostname.com", true},
-		{"test@badtoken.com", true},
-		{"test@badstatus.com", true},
+		{"successful send", "test@domain.com", false},
+		{"invalid domain error", "test@badhostname.com", true},
+		{"invalid token error", "test@badtoken.com", true},
+		{"bad status error", "test@badstatus.com", true},
 	}
 
 	// Loop tests
 	for _, test := range tests {
-		email.Recipients = []string{test.input}
-		email.RecipientsCc = []string{test.input}
-		email.RecipientsBcc = []string{test.input}
-		email.ReplyToAddress = test.input
-		if err = sendViaMandrill(client, email, false); err != nil && !test.expectedError {
-			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
-		} else if err == nil && test.expectedError {
-			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			email.Recipients = []string{test.input}
+			email.RecipientsCc = []string{test.input}
+			email.RecipientsBcc = []string{test.input}
+			email.ReplyToAddress = test.input
+			err := sendViaMandrill(client, email, false)
+			if test.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 
 	// Test bad from address
-	email.FromAddress = "invalid@"
-	if err = sendViaMandrill(client, email, false); err == nil {
-		t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), email.FromAddress)
-	}
+	t.Run("invalid from address error", func(t *testing.T) {
+		email.FromAddress = "invalid@"
+		err := sendViaMandrill(client, email, false)
+		assert.Error(t, err)
+	})
 }

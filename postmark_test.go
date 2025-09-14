@@ -8,6 +8,8 @@ import (
 	"testing"
 
 	"github.com/mrz1836/postmark"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockPostmarkInterface is a mocking interface for Postmark
@@ -74,32 +76,36 @@ func TestSendViaPostmark(t *testing.T) {
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
 	if err != nil {
-		t.Fatalf("failed to attach file: %s", err.Error())
+		require.NoError(t, err, "failed to attach file")
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
 
 	// Create the list of tests
 	tests := []struct {
+		name          string
 		input         string
 		expectedError bool
 	}{
-		{"test@domain.com", false},
-		{"test@badhostname.com", true},
-		{"test@badtoken.com", true},
-		{"test@errorcode.com", true},
+		{"successful send", "test@domain.com", false},
+		{"invalid domain name error", "test@badhostname.com", true},
+		{"invalid token error", "test@badtoken.com", true},
+		{"error code failure", "test@errorcode.com", true},
 	}
 
 	// Loop tests
 	for _, test := range tests {
-		email.Recipients = []string{test.input}
-		email.RecipientsCc = []string{test.input}
-		email.RecipientsBcc = []string{test.input}
-		email.ReplyToAddress = test.input
-		if err = sendViaPostmark(context.Background(), client, email); err != nil && !test.expectedError {
-			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
-		} else if err == nil && test.expectedError {
-			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			email.Recipients = []string{test.input}
+			email.RecipientsCc = []string{test.input}
+			email.RecipientsBcc = []string{test.input}
+			email.ReplyToAddress = test.input
+			err := sendViaPostmark(context.Background(), client, email)
+			if test.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }

@@ -9,6 +9,8 @@ import (
 	"testing"
 
 	"github.com/domodwyer/mailyak"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // mockSMTPInterface is a mocking interface for SMTP
@@ -121,18 +123,17 @@ func (m *mockSMTPInterface) ClearAttachments() {}
 func TestNewSMTPClient(t *testing.T) {
 	auth := smtp.PlainAuth("", "user", "password", "host")
 
-	client := newSMTPClient("", auth)
+	t.Run("empty host error", func(t *testing.T) {
+		client := newSMTPClient("", auth)
+		err := client.Send()
+		assert.Error(t, err)
+	})
 
-	err := client.Send()
-	if err == nil {
-		t.Fatalf("error should have occurred, host was empty")
-	}
-
-	client = newSMTPClient("example.com", auth)
-	err = client.Send()
-	if err == nil {
-		t.Fatalf("error should have occurred, host example.com")
-	}
+	t.Run("example.com host error", func(t *testing.T) {
+		client := newSMTPClient("example.com", auth)
+		err := client.Send()
+		assert.Error(t, err)
+	})
 }
 
 // newMockSMTPClient will create a new mock client for SMTP
@@ -169,31 +170,35 @@ func TestSendViaSMTP(t *testing.T) {
 	// Add an attachment
 	f, err := os.Open("examples/test-attachment-file.txt")
 	if err != nil {
-		t.Fatalf("failed to attach file: %s", err.Error())
+		require.NoError(t, err, "failed to attach file")
 	} else {
 		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
 	}
 
 	// Create the list of tests
 	tests := []struct {
+		name          string
 		input         string
 		expectedError bool
 	}{
-		{"test@domain.com", false},
-		{"test@badusername.com", true},
-		{"test@badhostname.com", true},
+		{"successful send", "test@domain.com", false},
+		{"bad username auth error", "test@badusername.com", true},
+		{"bad hostname DNS error", "test@badhostname.com", true},
 	}
 
 	// Loop tests
 	for _, test := range tests {
-		email.Recipients = []string{test.input}
-		email.RecipientsCc = []string{test.input}
-		email.RecipientsBcc = []string{test.input}
-		email.ReplyToAddress = test.input
-		if err = sendViaSMTP(client, email); err != nil && !test.expectedError {
-			t.Fatalf("%s Failed: expected to NOT throw an error, inputted and [%s], error [%s]", t.Name(), test.input, err.Error())
-		} else if err == nil && test.expectedError {
-			t.Fatalf("%s Failed: expected to throw an error, inputted and [%s]", t.Name(), test.input)
-		}
+		t.Run(test.name, func(t *testing.T) {
+			email.Recipients = []string{test.input}
+			email.RecipientsCc = []string{test.input}
+			email.RecipientsBcc = []string{test.input}
+			email.ReplyToAddress = test.input
+			err := sendViaSMTP(client, email)
+			if test.expectedError {
+				assert.Error(t, err)
+			} else {
+				assert.NoError(t, err)
+			}
+		})
 	}
 }
