@@ -68,11 +68,11 @@ type MailService struct {
 func (m *MailService) StartUp() (err error) {
 	// Required to have user and domain
 	if len(m.FromUsername) == 0 {
-		err = fmt.Errorf("missing required field: from_username")
-		return
+		err = ErrMissingFromUsername
+		return err
 	} else if len(m.FromDomain) == 0 {
-		err = fmt.Errorf("missing required field: from_domain")
-		return
+		err = ErrMissingFromDomain
+		return err
 	}
 
 	// Set any defaults
@@ -152,10 +152,10 @@ func (m *MailService) StartUp() (err error) {
 
 	// No service providers found
 	if len(m.AvailableProviders) == 0 {
-		err = fmt.Errorf("attempted to startup the email service provider(s) however there's no available service provider")
+		err = ErrNoServiceProvider
 	}
 
-	return
+	return err
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers

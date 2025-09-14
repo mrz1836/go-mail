@@ -2,7 +2,6 @@ package gomail
 
 import (
 	"bytes"
-	"fmt"
 	"io"
 	"net/smtp"
 	"os"
@@ -31,12 +30,12 @@ func (m *mockSMTPInterface) Send() error {
 
 		// Bad username - Auth
 		if m.toAddrs[0] == "test@badusername.com" {
-			return fmt.Errorf("535 5.7.8")
+			return ErrSMTPAuth
 		}
 
 		// Bad hostname
 		if m.toAddrs[0] == "test@badhostname.com" {
-			return fmt.Errorf("dial tcp: lookup smtp.badhostname.com: no such host")
+			return ErrDNSLookup
 		}
 
 	}

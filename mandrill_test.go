@@ -1,11 +1,16 @@
 package gomail
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
 	"github.com/mattbaird/gochimp"
+)
+
+const (
+	testDomain   = "example.com"
+	testFromName = "No Reply"
+	testUsername = "no-reply"
 )
 
 // mockMandrillInterface is a mocking interface for Mandrill
@@ -22,12 +27,12 @@ func (m *mockMandrillInterface) MessageSend(message gochimp.Message, _ bool) ([]
 
 	// Invalid from domain
 	if message.To[0].Email == "test@badhostname.com" {
-		return []gochimp.SendResponse{}, fmt.Errorf(`-2: Validation error: {"message":{"from_email":"The domain portion of the email address is invalid (the portion after the @: badhostname.com)"}}`)
+		return []gochimp.SendResponse{}, ErrValidationError
 	}
 
 	// Invalid token
 	if message.To[0].Email == "test@badtoken.com" {
-		return []gochimp.SendResponse{}, fmt.Errorf(`-1: Invalid API key`)
+		return []gochimp.SendResponse{}, ErrInvalidAPIKey
 	}
 
 	// Invalid status
@@ -59,9 +64,9 @@ func TestSendViaMandrill(t *testing.T) {
 
 	// Set all the defaults, toggle all warnings
 	mail.AutoText = true
-	mail.FromDomain = "example.com"
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromDomain = testDomain
+	mail.FromName = testFromName
+	mail.FromUsername = testUsername
 	mail.Important = true
 	mail.TrackClicks = true
 	mail.TrackOpens = true

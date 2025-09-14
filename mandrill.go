@@ -21,8 +21,8 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 	// Get the signing domain from the FromAddress
 	emailParts := strings.Split(email.FromAddress, "@")
 	if len(emailParts) <= 1 || emailParts[1] == "" {
-		err = fmt.Errorf("invalid FromAddress, domain not found using: %s", email.FromAddress)
-		return
+		err = fmt.Errorf("invalid FromAddress, domain not found using: %s: %w", email.FromAddress, ErrInvalidFromAddress)
+		return err
 	}
 
 	// Create the Mandrill email
@@ -82,7 +82,7 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 		reader := bufio.NewReader(attachment.FileReader)
 		var content []byte
 		if content, err = io.ReadAll(reader); err != nil {
-			return
+			return err
 		}
 
 		// Encode as base64
@@ -95,16 +95,16 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 	// Send the email
 	var sendResponse []gochimp.SendResponse
 	if sendResponse, err = client.MessageSend(message, async); err != nil {
-		return
+		return err
 	}
 
 	// Check the response of each email that was sent
 	if len(sendResponse) > 0 {
 		for _, response := range sendResponse {
 			if response.Status != "sent" && response.Status != "queued" && response.Status != "scheduled" {
-				err = fmt.Errorf("message status was %s and not sent - given reason: %s", response.Status, response.RejectedReason)
+				err = fmt.Errorf("message status was %s and not sent - given reason: %s: %w", response.Status, response.RejectedReason, ErrMessageNotSent)
 			}
 		}
 	}
-	return
+	return err
 }

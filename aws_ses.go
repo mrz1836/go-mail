@@ -131,8 +131,8 @@ func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
 	if err != nil {
 		return err
 	} else if !strings.Contains(awsResponse, "SendRawEmailResult") {
-		err = fmt.Errorf("aws ses did not return expected valid response: %s", awsResponse)
+		err = fmt.Errorf("aws ses did not return expected valid response: %s: %w", awsResponse, ErrInvalidAWSResponse)
 	}
 
-	return
+	return err
 }

@@ -9,6 +9,12 @@ import (
 	"testing"
 )
 
+const (
+	testDomainEmail   = "example.com"
+	testFromNameEmail = "No Reply"
+	testUsernameEmail = "no-reply"
+)
+
 // TestMailService_NewEmail tests the method NewEmail()
 func TestMailService_NewEmail(t *testing.T) {
 	t.Parallel()
@@ -16,9 +22,9 @@ func TestMailService_NewEmail(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	email := mail.NewEmail()
@@ -47,9 +53,9 @@ func TestMailService_NewEmail(t *testing.T) {
 // ExampleMailService_NewEmail example using the NewEmail()
 func ExampleMailService_NewEmail() {
 	mail := new(MailService)
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 
 	email := mail.NewEmail()
 	fmt.Printf("new email with from address: %s", email.FromAddress)
@@ -59,9 +65,9 @@ func ExampleMailService_NewEmail() {
 // BenchmarkMailService_NewEmail runs benchmark on NewEmail()
 func BenchmarkMailService_NewEmail(b *testing.B) {
 	mail := new(MailService)
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	for i := 0; i < b.N; i++ {
 		_ = mail.NewEmail()
 	}
@@ -72,9 +78,9 @@ func TestEmail_AddAttachment(t *testing.T) {
 	t.Parallel()
 
 	mail := new(MailService)
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 
 	email := mail.NewEmail()
 	email.AddAttachment("testName", "testType", nil)
@@ -96,9 +102,9 @@ func TestEmail_AddAttachment(t *testing.T) {
 // ExampleEmail_AddAttachment example using the AddAttachment()
 func ExampleEmail_AddAttachment() {
 	mail := new(MailService)
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 
 	email := mail.NewEmail()
 	email.AddAttachment("testName", "testType", nil)
@@ -110,9 +116,9 @@ func ExampleEmail_AddAttachment() {
 // BenchmarkEmail_AddAttachment runs benchmark on AddAttachment()
 func BenchmarkEmail_AddAttachment(b *testing.B) {
 	mail := new(MailService)
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	email := mail.NewEmail()
 	for i := 0; i < b.N; i++ {
 		email.AddAttachment("testName", "testType", nil)
@@ -126,9 +132,9 @@ func TestEmail_ParseTemplate(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	email := mail.NewEmail()
@@ -157,9 +163,9 @@ func TestEmail_ParseHTMLTemplate(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	email := mail.NewEmail()
@@ -198,9 +204,9 @@ func TestEmail_ApplyTemplates(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	email := mail.NewEmail()
@@ -254,9 +260,9 @@ func TestMailService_SendEmail(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	// Use the AWS SES provider
@@ -273,7 +279,7 @@ func TestMailService_SendEmail(t *testing.T) {
 	mail.SMTPPort = 25
 	mail.SMTPUsername = "fake"
 	mail.SMTPPassword = "fake"
-	mail.SMTPHost = "example.com"
+	mail.SMTPHost = testDomainEmail
 
 	// Start the mail service
 	err := mail.StartUp()
@@ -320,9 +326,9 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 	mail := new(MailService)
 
 	mail.AutoText = true
-	mail.FromUsername = "no-reply"
-	mail.FromName = "No Reply"
-	mail.FromDomain = "example.com"
+	mail.FromUsername = testUsernameEmail
+	mail.FromName = testFromNameEmail
+	mail.FromDomain = testDomainEmail
 	mail.Important = true
 
 	// Use the Postmark provider

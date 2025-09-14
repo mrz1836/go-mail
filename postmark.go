@@ -74,7 +74,7 @@ func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email
 		reader := bufio.NewReader(attachment.FileReader)
 		var content []byte
 		if content, err = io.ReadAll(reader); err != nil {
-			return
+			return err
 		}
 
 		// Encode as base64
@@ -97,13 +97,13 @@ func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email
 	// Send the email
 	var resp postmark.EmailResponse
 	if resp, err = client.SendEmail(ctx, postmarkEmail); err != nil {
-		return
+		return err
 	}
 
 	// Check the response from Postmark
 	if resp.ErrorCode > 0 {
-		err = fmt.Errorf("error from postmark: %s error code: %d", resp.Message, resp.ErrorCode)
+		err = fmt.Errorf("error from postmark: %s error code: %d: %w", resp.Message, resp.ErrorCode, ErrPostmarkError)
 	}
 
-	return
+	return err
 }

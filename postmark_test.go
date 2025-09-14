@@ -22,12 +22,12 @@ func (m *mockPostmarkInterface) SendEmail(_ context.Context, email postmark.Emai
 
 	// Invalid domain name
 	if email.To == "test@badhostname.com" {
-		return *new(postmark.EmailResponse), fmt.Errorf("400 The 'From' address you supplied (No Reply %s) is not a Sender Signature on your account. Please add and confirm this address in order to be able to use it in the 'From' field of your messages", email.To)
+		return *new(postmark.EmailResponse), fmt.Errorf("400 The 'From' address you supplied (No Reply %s) is not a Sender Signature on your account. Please add and confirm this address in order to be able to use it in the 'From' field of your messages: %w", email.To, ErrPostmarkFromError)
 	}
 
 	// Invalid token
 	if email.To == "test@badtoken.com" {
-		return *new(postmark.EmailResponse), fmt.Errorf("10 The Server Token you provided in the X-Postmark-Server-Token request header was invalid. Please verify that you are using a valid token")
+		return *new(postmark.EmailResponse), fmt.Errorf("10 The Server Token you provided in the X-Postmark-Server-Token request header was invalid. Please verify that you are using a valid token: %w", ErrPostmarkTokenError)
 	}
 
 	// Invalid - bad error code

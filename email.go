@@ -68,7 +68,7 @@ func (e *Email) ApplyTemplates(htmlTemplate, textTemplate *template.Template, em
 
 		// Read the struct into the HTML buffer
 		if err = htmlTemplate.ExecuteTemplate(&buffer, htmlTemplate.Name(), emailData); err != nil {
-			return
+			return err
 		}
 
 		// Turn the buffer to a string
@@ -83,14 +83,14 @@ func (e *Email) ApplyTemplates(htmlTemplate, textTemplate *template.Template, em
 
 		// Read the struct into the text buffer
 		if err = textTemplate.ExecuteTemplate(&buffer, textTemplate.Name(), emailData); err != nil {
-			return
+			return err
 		}
 
 		// Turn the buffer to a string
 		e.PlainTextContent = buffer.String()
 	}
 
-	return
+	return nil
 }
 
 // ParseTemplate parse the template, fire error if parse fails
@@ -148,49 +148,54 @@ func (m *MailService) NewEmail() (email *Email) {
 	return
 }
 
+// validateEmail performs standard email validation checks
+func (m *MailService) validateEmail(email *Email) error {
+	if len(email.Subject) == 0 {
+		return ErrMissingSubject
+	}
+	if len(email.PlainTextContent) == 0 && len(email.HTMLContent) == 0 {
+		return ErrMissingContent
+	}
+	if len(email.Recipients) == 0 {
+		return ErrMissingRecipient
+	}
+	if len(email.Recipients) > m.MaxToRecipients {
+		return fmt.Errorf("max TO recipient limit of %d reached: %d: %w", m.MaxToRecipients, len(email.Recipients), ErrMaxToRecipientsReached)
+	}
+	if len(email.RecipientsCc) > m.MaxCcRecipients {
+		return fmt.Errorf("max CC recipient limit of %d reached: %d: %w", m.MaxCcRecipients, len(email.RecipientsCc), ErrMaxCcRecipientsReached)
+	}
+	if len(email.RecipientsBcc) > m.MaxBccRecipients {
+		return fmt.Errorf("max BCC recipient limit of %d reached: %d: %w", m.MaxBccRecipients, len(email.RecipientsBcc), ErrMaxBccRecipientsReached)
+	}
+	return nil
+}
+
 // SendEmail will send an email using the given provider
 func (m *MailService) SendEmail(ctx context.Context, email *Email, provider ServiceProvider) (err error) {
-	// Do we have that provider?
-	if containsServiceProvider(m.AvailableProviders, provider) {
-
-		// Safeguard the user sending mis-configured emails
-		// These validations are standard on all providers
-		if len(email.Subject) == 0 {
-			err = fmt.Errorf("email is missing a subject")
-			return
-		} else if len(email.PlainTextContent) == 0 && len(email.HTMLContent) == 0 {
-			err = fmt.Errorf("email is missing content (plain & html)")
-			return
-		} else if len(email.Recipients) == 0 {
-			err = fmt.Errorf("email is missing a recipient")
-			return
-		} else if len(email.Recipients) > m.MaxToRecipients {
-			err = fmt.Errorf("max TO recipient limit of %d reached: %d", m.MaxToRecipients, len(email.Recipients))
-			return
-		} else if len(email.RecipientsCc) > m.MaxCcRecipients {
-			err = fmt.Errorf("max CC recipient limit of %d reached: %d", m.MaxCcRecipients, len(email.RecipientsCc))
-			return
-		} else if len(email.RecipientsBcc) > m.MaxBccRecipients {
-			err = fmt.Errorf("max BCC recipient limit of %d reached: %d", m.MaxBccRecipients, len(email.RecipientsBcc))
-			return
-		}
-
-		// Send it via a given provider
-		switch provider {
-		case AwsSes:
-			err = sendViaAwsSes(m.awsSesService, email)
-		case Mandrill:
-			err = sendViaMandrill(m.mandrillService, email, true)
-		case Postmark:
-			err = sendViaPostmark(ctx, m.postmarkService, email)
-		case SMTP:
-			err = sendViaSMTP(m.smtpClient, email)
-		default:
-			err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent", provider, m.AvailableProviders)
-		}
-	} else {
-		err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent", provider, m.AvailableProviders)
+	// Check if provider is available
+	if !containsServiceProvider(m.AvailableProviders, provider) {
+		return fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent: %w", provider, m.AvailableProviders, ErrProviderNotFound)
 	}
 
-	return
+	// Validate email configuration
+	if err = m.validateEmail(email); err != nil {
+		return err
+	}
+
+	// Send it via the given provider
+	switch provider {
+	case AwsSes:
+		err = sendViaAwsSes(m.awsSesService, email)
+	case Mandrill:
+		err = sendViaMandrill(m.mandrillService, email, true)
+	case Postmark:
+		err = sendViaPostmark(ctx, m.postmarkService, email)
+	case SMTP:
+		err = sendViaSMTP(m.smtpClient, email)
+	default:
+		err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent: %w", provider, m.AvailableProviders, ErrProviderNotFound)
+	}
+
+	return err
 }
