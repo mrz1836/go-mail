@@ -28,7 +28,7 @@
         "type=cache,target=/home/vscode/.cache/go-build",
         "type=bind,source=/var/run/docker.sock,target=/var/run/docker.sock"
     ],
-    "name": "go-logger dev container",
+    "name": "go-mail dev container",
     "postCreateCommand": "magex lint && magex vet && magex test",
     "remoteUser": "vscode",
     "runArgs": [
