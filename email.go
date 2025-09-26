@@ -105,7 +105,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 	// Read HTML template file
 	var tempBytes []byte
 	if tempBytes, err = os.ReadFile(htmlLocation); err != nil { //nolint:gosec // No security issue here
-		return
+		return htmlTemplate, err
 	}
 
 	// Do we have styles to replace?
@@ -115,12 +115,12 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 		tempBytes = bytes.ReplaceAll(tempBytes, []byte("{{.Styles}}"), e.CSS)
 		var tempString string
 		if tempString, err = inliner.Inline(string(tempBytes)); err != nil {
-			return
+			return htmlTemplate, err
 		}
 
 		// Replace the string with template
 		if htmlTemplate, err = e.ParseTemplate(htmlLocation); err != nil {
-			return
+			return htmlTemplate, err
 		}
 		_, err = htmlTemplate.Parse(tempString)
 
@@ -129,7 +129,7 @@ func (e *Email) ParseHTMLTemplate(htmlLocation string) (htmlTemplate *template.T
 		htmlTemplate, err = e.ParseTemplate(htmlLocation)
 	}
 
-	return
+	return htmlTemplate, err
 }
 
 // NewEmail creates a new email using defaults from the service configuration
@@ -145,7 +145,7 @@ func (m *MailService) NewEmail() (email *Email) {
 	email.TrackClicks = m.TrackClicks
 	email.TrackOpens = m.TrackOpens
 
-	return
+	return email
 }
 
 // validateEmail performs standard email validation checks
