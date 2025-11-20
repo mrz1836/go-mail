@@ -75,7 +75,6 @@
             "goconst",
             "godox",
             "goheader",
-            "gomoddirectives",
             "gosec",
             "gosmopolitan",
             "govet",
