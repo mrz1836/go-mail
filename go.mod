@@ -4,8 +4,8 @@ go 1.24.0
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.0
-	github.com/aws/aws-sdk-go-v2/config v1.32.5
-	github.com/aws/aws-sdk-go-v2/credentials v1.19.5
+	github.com/aws/aws-sdk-go-v2/config v1.32.6
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.6
 	github.com/aws/aws-sdk-go-v2/service/ses v1.34.17
 	github.com/aws/smithy-go v1.24.0
 	github.com/aymerick/douceur v0.2.0
@@ -25,15 +25,12 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.4 // indirect
 	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.16 // indirect
 	github.com/aws/aws-sdk-go-v2/service/signin v1.0.4 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.7 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.8 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.12 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.41.5 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.47.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// Security: Force golang.org/x/crypto to v0.45.0 to fix CVE-2025-47914 and CVE-2025-58181
-replace golang.org/x/crypto => golang.org/x/crypto v0.45.0
