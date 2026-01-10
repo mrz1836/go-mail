@@ -39,13 +39,7 @@ func (m *mockMandrillInterface) MessageSend(message gochimp.Message, _ bool) ([]
 
 	// Invalid status
 	if message.To[0].Email == "test@badstatus.com" {
-		var responses []gochimp.SendResponse
-		resp := gochimp.SendResponse{
-			Status: "unknown",
-		}
-		responses = append(responses, resp)
-
-		return responses, nil
+		return []gochimp.SendResponse{{Status: "unknown"}}, nil
 	}
 
 	// Default is success
