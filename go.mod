@@ -11,7 +11,7 @@ require (
 	github.com/aymerick/douceur v0.2.0
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
-	github.com/mrz1836/postmark v1.8.2
+	github.com/mrz1836/postmark v1.8.3
 	github.com/stretchr/testify v1.11.1
 )
 
@@ -31,6 +31,6 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/gorilla/css v1.0.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
-	golang.org/x/net v0.48.0 // indirect
+	golang.org/x/net v0.49.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
