@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2 v1.41.4
 	github.com/aws/aws-sdk-go-v2/config v1.32.11
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.12
-	github.com/aws/aws-sdk-go-v2/service/ses v1.34.20
+	github.com/aws/aws-sdk-go-v2/service/ses v1.34.21
 	github.com/aws/smithy-go v1.24.2
 	github.com/aymerick/douceur v0.2.0
 	github.com/domodwyer/mailyak v3.1.1+incompatible
