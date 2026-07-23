@@ -100,7 +100,8 @@ func (m *MailService) StartUp() (err error) {
 		}
 
 		// Create AWS config with static credentials
-		awsConfig, awsErr := config.LoadDefaultConfig(context.TODO(),
+		awsConfig, awsErr := config.LoadDefaultConfig(
+			context.TODO(),
 			config.WithRegion(region),
 			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 				m.AwsSesAccessID,
