@@ -109,6 +109,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 
 ### Features
 - Supports multiple service providers _(below)_
+- AWS SES via static keys or the default credential chain _(IAM role)_
 - Support basic [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
 - Plain-text and HTML content
 - Multiple file attachments

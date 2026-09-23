@@ -16,6 +16,9 @@ func main() {
 	// Run the AWS SES example
 	awsSesExample()
 
+	// Run the AWS SES example using the default credential chain (e.g. an IAM role)
+	// awsSesIAMRoleExample()
+
 	// Run the Mandrill example
 	// mandrillExample()
 
@@ -68,6 +71,50 @@ func awsSesExample() {
 	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
 	email.Recipients = []string{toRecipients}
 	email.Subject = "example go-mail email using AWS SES"
+
+	// Send the email
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
+// awsSesIAMRoleExample shows an example using AWS SES with the default
+// credential chain (for example an IAM role on Lambda, ECS, or EC2) instead of
+// static access keys
+func awsSesIAMRoleExample() { //nolint:unused // this is an example function
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider: no static keys — credentials come from the default chain
+	mail.AwsSesUseIAMRole = true
+	mail.AwsSesRegion = os.Getenv("EMAIL_AWS_SES_REGION")
+	provider := gomail.AwsSes
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using AWS SES (IAM role)"
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {

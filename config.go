@@ -53,15 +53,16 @@ type MailService struct {
 	postmarkService     postmarkInterface // Postmark api client
 	smtpAuth            smtp.Auth         // Auth credentials for SMTP
 	smtpClient          smtpInterface     // SMTP client
-	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`           // ie: testuser
-	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"` // max amount for BCC
-	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`   // max amount for CC
-	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`   // max amount for TO
-	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                   // ie: 25
-	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                   // whether to automatically generate a text part for messages that are not given text
-	Important           bool              `json:"important" mapstructure:"important"`                   // whether this message is important, and should be delivered ahead of non-important messages
-	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`             // whether to turn on click tracking for the message
-	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`               // whether to turn on open tracking for the message
+	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`               // ie: testuser
+	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"`     // max amount for BCC
+	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`       // max amount for CC
+	MaxToRecipients     int               `json:"max_to_recipients" mapstructure:"max_to_recipients"`       // max amount for TO
+	SMTPPort            int               `json:"smtp_port" mapstructure:"smtp_port"`                       // ie: 25
+	AutoText            bool              `json:"auto_text" mapstructure:"auto_text"`                       // whether to automatically generate a text part for messages that are not given text
+	Important           bool              `json:"important" mapstructure:"important"`                       // whether this message is important, and should be delivered ahead of non-important messages
+	TrackClicks         bool              `json:"track_clicks" mapstructure:"track_clicks"`                 // whether to turn on click tracking for the message
+	TrackOpens          bool              `json:"track_opens" mapstructure:"track_opens"`                   // whether to turn on open tracking for the message
+	AwsSesUseIAMRole    bool              `json:"aws_ses_use_iam_role" mapstructure:"aws_ses_use_iam_role"` // load AWS SES using the default credential chain (IAM role) instead of static access keys
 }
 
 // StartUp is fired once to load the email service
@@ -90,43 +91,18 @@ func (m *MailService) StartUp() (err error) {
 		m.AvailableProviders = append(m.AvailableProviders, Mandrill)
 	}
 
-	// If the AWS SES credentials exist
-	if len(m.AwsSesAccessID) > 0 && len(m.AwsSesSecretKey) > 0 {
+	// If the AWS SES static credentials exist, or the default credential chain is enabled
+	awsSesStaticCreds := len(m.AwsSesAccessID) > 0 && len(m.AwsSesSecretKey) > 0
+	if awsSesStaticCreds || m.AwsSesUseIAMRole {
 
-		// Set the region (default to us-east-1 if not provided)
-		region := awsSesDefaultRegion
-		if len(m.AwsSesRegion) > 0 {
-			region = m.AwsSesRegion
+		// Build the SES client (static credentials or the default chain)
+		svc, sesErr := m.loadAwsSesService(awsSesStaticCreds)
+		if sesErr != nil {
+			return sesErr
 		}
 
-		// Create AWS config with static credentials
-		awsConfig, awsErr := config.LoadDefaultConfig(
-			context.TODO(),
-			config.WithRegion(region),
-			config.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
-				m.AwsSesAccessID,
-				m.AwsSesSecretKey,
-				"",
-			)),
-		)
-		if awsErr != nil {
-			return fmt.Errorf("failed to load AWS config: %w", awsErr)
-		}
-
-		// Create SES client
-		sesClient := ses.NewFromConfig(awsConfig)
-
-		// Set custom endpoint if provided
-		if len(m.AwsSesEndpoint) > 0 {
-			sesClient = ses.NewFromConfig(awsConfig, func(o *ses.Options) {
-				o.BaseEndpoint = &m.AwsSesEndpoint
-			})
-		}
-
-		// Wrap the client with our interface implementation
-		m.awsSesService = &awsSesSdkV2Client{client: sesClient}
-
-		// Add to the list of available providers
+		// Register the loaded provider
+		m.awsSesService = svc
 		m.AvailableProviders = append(m.AvailableProviders, AwsSes)
 	}
 
@@ -157,6 +133,43 @@ func (m *MailService) StartUp() (err error) {
 	}
 
 	return err
+}
+
+// loadAwsSesService builds the AWS SES client for StartUp. When staticCreds is
+// true the configured access id and secret key are used; otherwise credentials
+// are resolved from the AWS default credential chain (environment, shared
+// config, web identity, or an ECS/EC2/Lambda IAM role). A custom endpoint is
+// applied when AwsSesEndpoint is set.
+func (m *MailService) loadAwsSesService(staticCreds bool) (awsSesInterface, error) {
+	// Set the region (default to us-east-1 if not provided)
+	region := awsSesDefaultRegion
+	if len(m.AwsSesRegion) > 0 {
+		region = m.AwsSesRegion
+	}
+
+	// Always set the region; add static credentials only when supplied
+	awsOptions := []func(*config.LoadOptions) error{config.WithRegion(region)}
+	if staticCreds {
+		awsOptions = append(awsOptions, config.WithCredentialsProvider(
+			credentials.NewStaticCredentialsProvider(m.AwsSesAccessID, m.AwsSesSecretKey, ""),
+		))
+	}
+
+	// Load the AWS config
+	awsConfig, err := config.LoadDefaultConfig(context.TODO(), awsOptions...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load AWS config: %w", err)
+	}
+
+	// Create the SES client, applying a custom endpoint when provided
+	sesClient := ses.NewFromConfig(awsConfig)
+	if len(m.AwsSesEndpoint) > 0 {
+		sesClient = ses.NewFromConfig(awsConfig, func(o *ses.Options) {
+			o.BaseEndpoint = &m.AwsSesEndpoint
+		})
+	}
+
+	return &awsSesSdkV2Client{client: sesClient}, nil
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers

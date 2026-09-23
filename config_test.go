@@ -84,3 +84,30 @@ func TestMailService_StartUp(t *testing.T) {
 	err = service.StartUp()
 	require.NoError(t, err)
 }
+
+// TestMailService_StartUpAwsSesIAMRole tests that the AWS SES provider loads via
+// the default credential chain when AwsSesUseIAMRole is set and no static access
+// keys are supplied.
+func TestMailService_StartUpAwsSesIAMRole(t *testing.T) {
+	t.Parallel()
+
+	service := new(MailService)
+	service.FromUsername = "no-reply"
+	service.FromDomain = "example.com"
+	service.AwsSesRegion = awsSesDefaultRegion
+	service.AwsSesUseIAMRole = true
+
+	err := service.StartUp()
+	require.NoError(t, err)
+	assert.True(t, containsServiceProvider(service.AvailableProviders, AwsSes),
+		"AWS SES should load via the default credential chain without static keys")
+
+	// Static keys remain optional: with neither keys nor the flag, SES is skipped.
+	other := new(MailService)
+	other.FromUsername = "no-reply"
+	other.FromDomain = "example.com"
+	err = other.StartUp()
+	require.Error(t, err)
+	assert.False(t, containsServiceProvider(other.AvailableProviders, AwsSes),
+		"AWS SES is not loaded without credentials or the IAM-role option")
+}
