@@ -2,7 +2,7 @@
 
 # 📨&nbsp;&nbsp;go-mail
 
-**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/))**
+**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/), [sendgrid](https://sendgrid.com/))**
 
 <br/>
 
@@ -125,6 +125,7 @@ View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail
 - [AWS SES](https://docs.aws.amazon.com/ses/)
 - [Mandrill](https://mandrillapp.com/api/docs/)
 - [Postmark](https://postmarkapp.com/developer)
+- [SendGrid](https://docs.sendgrid.com/) _(native open & click tracking)_
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
 </details>
 

@@ -313,7 +313,7 @@ func parseTemplates(htmlContent, textContent string) (*template.Template, *templ
 	return htmlTemplate, textTemplate
 }
 
-func createTestData(nameValue string) interface{} {
+func createTestData(nameValue string) any {
 	return struct {
 		Name  string
 		Flag  bool
