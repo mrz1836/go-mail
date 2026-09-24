@@ -1,18 +1,10 @@
 package gomail
 
 import (
-	"os"
 	"testing"
 
 	"github.com/mattbaird/gochimp"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-)
-
-const (
-	testDomain   = "example.com"
-	testFromName = "No Reply"
-	testUsername = "no-reply"
 )
 
 // mockMandrillInterface is a mocking interface for Mandrill
@@ -23,7 +15,7 @@ func (m *mockMandrillInterface) MessageSend(message gochimp.Message, _ bool) ([]
 	// todo: is async (bool) needed?
 
 	// Success
-	if message.To[0].Email == "test@domain.com" {
+	if message.To[0].Email == testRecipientSuccess {
 		return []gochimp.SendResponse{}, nil
 	}
 
@@ -55,66 +47,43 @@ func newMockMandrillClient() mandrillInterface {
 func TestSendViaMandrill(t *testing.T) {
 	t.Parallel()
 
-	// Start the service
-	mail := new(MailService)
-
-	// Set all the defaults, toggle all warnings
-	mail.AutoText = true
-	mail.FromDomain = testDomain
-	mail.FromName = testFromName
-	mail.FromUsername = testUsername
-	mail.Important = true
-	mail.TrackClicks = true
-	mail.TrackOpens = true
-
-	// Setup mock client
+	// Setup mock client and a ready-to-send email
 	client := newMockMandrillClient()
-
-	// New email
-	email := mail.NewEmail()
-	email.HTMLContent = "<html>Test</html>"
-	email.PlainTextContent = "Test"
-
-	// Add an attachment
-	f, err := os.Open("examples/test-attachment-file.txt")
-	if err != nil {
-		require.NoError(t, err, "failed to attach file")
-	} else {
-		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
-	}
+	email := newProviderTestEmail(t)
 
 	// Create the list of tests
-	tests := []struct {
-		name          string
-		input         string
-		expectedError bool
-	}{
-		{"successful send", "test@domain.com", false},
+	cases := []providerSendCase{
+		{"successful send", testRecipientSuccess, false},
 		{"invalid domain error", "test@badhostname.com", true},
 		{"invalid token error", "test@badtoken.com", true},
 		{"bad status error", "test@badstatus.com", true},
 	}
 
 	// Loop tests
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			email.Recipients = []string{test.input}
-			email.RecipientsCc = []string{test.input}
-			email.RecipientsBcc = []string{test.input}
-			email.ReplyToAddress = test.input
-			err := sendViaMandrill(client, email, false)
-			if test.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
+	runProviderSendCases(t, email, cases, func() error {
+		return sendViaMandrill(client, email, false)
+	})
 
-	// Test bad from address
+	// Test bad from address (kept inline; mutates FromAddress after the table cases)
 	t.Run("invalid from address error", func(t *testing.T) {
 		email.FromAddress = "invalid@"
 		err := sendViaMandrill(client, email, false)
-		assert.Error(t, err)
+		require.Error(t, err)
 	})
+}
+
+// TestSendViaMandrill_AttachmentError confirms an attachment whose reader fails
+// surfaces the read error before sending
+func TestSendViaMandrill_AttachmentError(t *testing.T) {
+	t.Parallel()
+
+	client := newMockMandrillClient()
+	email := newProviderTestEmail(t)
+	email.Recipients = []string{testRecipientSuccess}
+	email.Attachments = []Attachment{
+		{FileName: "bad.txt", FileType: "text/plain", FileReader: errReader{}},
+	}
+
+	err := sendViaMandrill(client, email, false)
+	require.ErrorIs(t, err, ErrBadHostname)
 }

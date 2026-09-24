@@ -1,11 +1,8 @@
 package gomail
 
 import (
-	"bufio"
 	"context"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"log"
 	"strings"
 
@@ -40,9 +37,9 @@ func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email
 		log.Printf("warning: auto text is enabled, but Postmark does not offer this feature")
 	}
 
-	// Set the "from" name if given
+	// Set the "from" name if given (RFC 5322: "Name <address>")
 	if len(email.FromName) > 0 {
-		postmarkEmail.From = email.FromName + " " + email.FromAddress
+		postmarkEmail.From = email.FromName + " <" + email.FromAddress + ">"
 	}
 
 	// Convert recipients to comma separated
@@ -62,35 +59,31 @@ func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email
 	}
 
 	// Convert attachments to Postmark format
+	postmarkEmail.Attachments = make([]postmark.Attachment, 0, len(email.Attachments))
 	for _, attachment := range email.Attachments {
 
 		// Create the postmark attachment
-		postmarkAttachment := &postmark.Attachment{
+		postmarkAttachment := postmark.Attachment{
 			ContentType: attachment.FileType,
 			Name:        attachment.FileName,
 		}
 
-		// Read all content from the attachment
-		reader := bufio.NewReader(attachment.FileReader)
-		var content []byte
-		if content, err = io.ReadAll(reader); err != nil {
+		// Encode the attachment contents as base64
+		if postmarkAttachment.Content, err = encodeAttachmentBase64(attachment.FileReader); err != nil {
 			return err
 		}
 
-		// Encode as base64
-		postmarkAttachment.Content = base64.StdEncoding.EncodeToString(content)
-
 		// Add to the email
-		postmarkEmail.Attachments = append(postmarkEmail.Attachments, *postmarkAttachment)
+		postmarkEmail.Attachments = append(postmarkEmail.Attachments, postmarkAttachment)
 	}
 
 	// Add importance
 	if email.Important {
 		postmarkEmail.Headers = append(
 			postmarkEmail.Headers,
-			postmark.Header{Name: "X-Priority", Value: "1 (Highest)"},
-			postmark.Header{Name: "X-MSMail-Priority", Value: "High"},
-			postmark.Header{Name: "Importance", Value: "High"},
+			postmark.Header{Name: headerXPriority, Value: headerXPriorityValue},
+			postmark.Header{Name: headerXMSMailPriority, Value: headerHighValue},
+			postmark.Header{Name: headerImportance, Value: headerHighValue},
 		)
 	}
 

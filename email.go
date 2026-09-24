@@ -4,6 +4,7 @@ package gomail
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"fmt"
 	"html/template"
 	"io"
@@ -53,8 +54,18 @@ func (e *Email) AddAttachment(name, fileType string, reader io.Reader) {
 	})
 }
 
+// encodeAttachmentBase64 reads an attachment's contents to EOF and returns them
+// base64-encoded, ready to embed in a provider payload
+func encodeAttachmentBase64(r io.Reader) (string, error) {
+	content, err := io.ReadAll(r)
+	if err != nil {
+		return "", err
+	}
+	return base64.StdEncoding.EncodeToString(content), nil
+}
+
 // ApplyTemplates will take the template files and process them with the email data (can be e or overridden)
-func (e *Email) ApplyTemplates(htmlTemplate, textTemplate *template.Template, emailData interface{}) (err error) {
+func (e *Email) ApplyTemplates(htmlTemplate, textTemplate *template.Template, emailData any) (err error) {
 	// Start the buffer
 	var buffer bytes.Buffer
 
@@ -171,11 +182,17 @@ func (m *MailService) validateEmail(email *Email) error {
 	return nil
 }
 
+// providerNotFoundErr builds the error returned when a requested provider is not
+// in the list of available providers
+func providerNotFoundErr(provider ServiceProvider, available []ServiceProvider) error {
+	return fmt.Errorf("service provider: %s was not in the list of available service providers: %v, email not sent: %w", provider, available, ErrProviderNotFound)
+}
+
 // SendEmail will send an email using the given provider
 func (m *MailService) SendEmail(ctx context.Context, email *Email, provider ServiceProvider) (err error) {
 	// Check if provider is available
 	if !containsServiceProvider(m.AvailableProviders, provider) {
-		return fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent: %w", provider, m.AvailableProviders, ErrProviderNotFound)
+		return providerNotFoundErr(provider, m.AvailableProviders)
 	}
 
 	// Validate email configuration
@@ -186,15 +203,17 @@ func (m *MailService) SendEmail(ctx context.Context, email *Email, provider Serv
 	// Send it via the given provider
 	switch provider {
 	case AwsSes:
-		err = sendViaAwsSes(m.awsSesService, email)
+		err = sendViaAwsSes(ctx, m.awsSesService, email)
 	case Mandrill:
 		err = sendViaMandrill(m.mandrillService, email, true)
 	case Postmark:
 		err = sendViaPostmark(ctx, m.postmarkService, email)
 	case SMTP:
 		err = sendViaSMTP(m.smtpClient, email)
+	case SendGrid:
+		err = sendViaSendGrid(ctx, m.sendGridService, email)
 	default:
-		err = fmt.Errorf("service provider: %x was not in the list of available service providers: %x, email not sent: %w", provider, m.AvailableProviders, ErrProviderNotFound)
+		err = providerNotFoundErr(provider, m.AvailableProviders)
 	}
 
 	return err

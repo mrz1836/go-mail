@@ -4,13 +4,11 @@ import (
 	"bytes"
 	"io"
 	"net/smtp"
-	"os"
 	"regexp"
 	"testing"
 
 	"github.com/domodwyer/mailyak"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // mockSMTPInterface is a mocking interface for SMTP
@@ -26,7 +24,7 @@ func (m *mockSMTPInterface) Send() error {
 	if len(m.toAddrs) > 0 {
 
 		// Valid email
-		if m.toAddrs[0] == "test@domain.com" {
+		if m.toAddrs[0] == testRecipientSuccess {
 			return nil
 		}
 
@@ -147,58 +145,19 @@ func newMockSMTPClient() smtpInterface {
 func TestSendViaSMTP(t *testing.T) {
 	t.Parallel()
 
-	// Start the service
-	mail := new(MailService)
-
-	// Set all the defaults, toggle all warnings
-	mail.AutoText = true
-	mail.FromDomain = "example.com"
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
-	mail.Important = true
-	mail.TrackClicks = true
-	mail.TrackOpens = true
-
-	// Setup mock client
+	// Setup mock client and a ready-to-send email
 	client := newMockSMTPClient()
-
-	// New email
-	email := mail.NewEmail()
-	email.HTMLContent = "<html>Test</html>"
-	email.PlainTextContent = "Test"
-
-	// Add an attachment
-	f, err := os.Open("examples/test-attachment-file.txt")
-	if err != nil {
-		require.NoError(t, err, "failed to attach file")
-	} else {
-		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
-	}
+	email := newProviderTestEmail(t)
 
 	// Create the list of tests
-	tests := []struct {
-		name          string
-		input         string
-		expectedError bool
-	}{
-		{"successful send", "test@domain.com", false},
+	cases := []providerSendCase{
+		{"successful send", testRecipientSuccess, false},
 		{"bad username auth error", "test@badusername.com", true},
 		{"bad hostname DNS error", "test@badhostname.com", true},
 	}
 
 	// Loop tests
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			email.Recipients = []string{test.input}
-			email.RecipientsCc = []string{test.input}
-			email.RecipientsBcc = []string{test.input}
-			email.ReplyToAddress = test.input
-			err := sendViaSMTP(client, email)
-			if test.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
+	runProviderSendCases(t, email, cases, func() error {
+		return sendViaSMTP(client, email)
+	})
 }

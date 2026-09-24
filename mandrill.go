@@ -1,10 +1,7 @@
 package gomail
 
 import (
-	"bufio"
-	"encoding/base64"
 	"fmt"
-	"io"
 	"strings"
 
 	"github.com/mattbaird/gochimp"
@@ -13,6 +10,18 @@ import (
 // mandrillInterface is an interface for Mandrill/mocking
 type mandrillInterface interface {
 	MessageSend(message gochimp.Message, async bool) ([]gochimp.SendResponse, error)
+}
+
+// appendRecipients converts addresses into Mandrill recipients of the given kind
+// (to/cc/bcc) and appends them to dst
+func appendRecipients(dst []gochimp.Recipient, addrs []string, kind string) []gochimp.Recipient {
+	for _, addr := range addrs {
+		dst = append(dst, gochimp.Recipient{
+			Email: addr,
+			Type:  kind,
+		})
+	}
+	return dst
 }
 
 // sendViaMandrill sends an email using the Mandrill service
@@ -42,54 +51,29 @@ func sendViaMandrill(client mandrillInterface, email *Email, async bool) (err er
 		ViewContentLink:    email.ViewContentLink,
 	}
 
-	// Convert recipients
-	for _, recipient := range email.Recipients {
-		emailRecipient := gochimp.Recipient{
-			Email: recipient,
-			Type:  "to",
-		}
-		message.To = append(message.To, emailRecipient)
-	}
-
-	// Convert any BCC recipients
-	for _, recipient := range email.RecipientsBcc {
-		emailRecipient := gochimp.Recipient{
-			Email: recipient,
-			Type:  "bcc",
-		}
-		message.To = append(message.To, emailRecipient)
-	}
-
-	// Convert any CC recipients
-	for _, recipient := range email.RecipientsCc {
-		emailRecipient := gochimp.Recipient{
-			Email: recipient,
-			Type:  "cc",
-		}
-		message.To = append(message.To, emailRecipient)
-	}
+	// Convert recipients (to, bcc, cc) into a single preallocated list
+	message.To = make([]gochimp.Recipient, 0, len(email.Recipients)+len(email.RecipientsBcc)+len(email.RecipientsCc))
+	message.To = appendRecipients(message.To, email.Recipients, "to")
+	message.To = appendRecipients(message.To, email.RecipientsBcc, "bcc")
+	message.To = appendRecipients(message.To, email.RecipientsCc, "cc")
 
 	// Convert attachments to Mandrill format
+	message.Attachments = make([]gochimp.Attachment, 0, len(email.Attachments))
 	for _, attachment := range email.Attachments {
 
 		// Create the Mandrill attachment
-		mandrillAttachment := &gochimp.Attachment{
+		mandrillAttachment := gochimp.Attachment{
 			Name: attachment.FileName,
 			Type: attachment.FileType,
 		}
 
-		// Read all content from the attachment
-		reader := bufio.NewReader(attachment.FileReader)
-		var content []byte
-		if content, err = io.ReadAll(reader); err != nil {
+		// Encode the attachment contents as base64
+		if mandrillAttachment.Content, err = encodeAttachmentBase64(attachment.FileReader); err != nil {
 			return err
 		}
 
-		// Encode as base64
-		mandrillAttachment.Content = base64.StdEncoding.EncodeToString(content)
-
 		// Add to the email
-		message.Attachments = append(message.Attachments, *mandrillAttachment)
+		message.Attachments = append(message.Attachments, mandrillAttachment)
 	}
 
 	// Send the email

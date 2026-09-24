@@ -1,9 +1,13 @@
 package gomail
 
 import (
+	"cmp"
 	"context"
 	"fmt"
+	"net"
 	"net/smtp"
+	"slices"
+	"strconv"
 
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
@@ -21,7 +25,26 @@ const (
 	Mandrill                        // Mandrill Email Service
 	Postmark                        // Postmark Email Service
 	SMTP                            // SMTP Email Service
+	SendGrid                        // SendGrid Email Service
 )
+
+// String returns the human-readable name of the service provider
+func (s ServiceProvider) String() string {
+	switch s {
+	case AwsSes:
+		return "AwsSes"
+	case Mandrill:
+		return "Mandrill"
+	case Postmark:
+		return "Postmark"
+	case SMTP:
+		return "SMTP"
+	case SendGrid:
+		return "SendGrid"
+	default:
+		return "Unknown"
+	}
+}
 
 const (
 	awsSesDefaultEndpoint = "https://email.us-east-1.amazonaws.com"
@@ -29,6 +52,13 @@ const (
 	maxBccRecipients      = 50
 	maxCcRecipients       = 50
 	maxToRecipients       = 50
+
+	// Importance headers applied when an email is marked as important
+	headerXPriority       = "X-Priority"
+	headerXPriorityValue  = "1 (Highest)"
+	headerXMSMailPriority = "X-MSMail-Priority"
+	headerImportance      = "Importance"
+	headerHighValue       = "High"
 )
 
 // MailService is the configuration to use for loading the service and provider's clients
@@ -48,9 +78,11 @@ type MailService struct {
 	PostmarkServerToken string            `json:"postmark_server_token" mapstructure:"postmark_server_token"` // ie: abc123...
 	SMTPHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
 	SMTPPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
+	SendGridAPIKey      string            `json:"sendgrid_api_key" mapstructure:"sendgrid_api_key"`           // sendgrid api key
 	awsSesService       awsSesInterface   // AWS SES client
 	mandrillService     mandrillInterface // Mandrill api client
 	postmarkService     postmarkInterface // Postmark api client
+	sendGridService     sendGridInterface // SendGrid api client
 	smtpAuth            smtp.Auth         // Auth credentials for SMTP
 	smtpClient          smtpInterface     // SMTP client
 	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`               // ie: testuser
@@ -76,10 +108,16 @@ func (m *MailService) StartUp() (err error) {
 		return err
 	}
 
-	// Set any defaults
-	m.MaxToRecipients = maxToRecipients
-	m.MaxCcRecipients = maxCcRecipients
-	m.MaxBccRecipients = maxBccRecipients
+	// Set any defaults (only when a cap was not explicitly configured)
+	if m.MaxToRecipients == 0 {
+		m.MaxToRecipients = maxToRecipients
+	}
+	if m.MaxCcRecipients == 0 {
+		m.MaxCcRecipients = maxCcRecipients
+	}
+	if m.MaxBccRecipients == 0 {
+		m.MaxBccRecipients = maxBccRecipients
+	}
 
 	// If the key is set, try loading the service
 	if len(m.MandrillAPIKey) > 0 {
@@ -121,10 +159,18 @@ func (m *MailService) StartUp() (err error) {
 		m.smtpAuth = smtp.PlainAuth("", m.SMTPUsername, m.SMTPPassword, m.SMTPHost)
 
 		// Create a new client from the connection string
-		m.smtpClient = newSMTPClient(fmt.Sprintf("%s:%d", m.SMTPHost, m.SMTPPort), m.smtpAuth)
+		m.smtpClient = newSMTPClient(net.JoinHostPort(m.SMTPHost, strconv.Itoa(m.SMTPPort)), m.smtpAuth)
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, SMTP)
+	}
+
+	// If the SendGrid api key is set, load the service
+	if len(m.SendGridAPIKey) > 0 {
+		m.sendGridService = newSendGridClient(m.SendGridAPIKey)
+
+		// Add to the list of available providers
+		m.AvailableProviders = append(m.AvailableProviders, SendGrid)
 	}
 
 	// No service providers found
@@ -142,10 +188,7 @@ func (m *MailService) StartUp() (err error) {
 // applied when AwsSesEndpoint is set.
 func (m *MailService) loadAwsSesService(staticCreds bool) (awsSesInterface, error) {
 	// Set the region (default to us-east-1 if not provided)
-	region := awsSesDefaultRegion
-	if len(m.AwsSesRegion) > 0 {
-		region = m.AwsSesRegion
-	}
+	region := cmp.Or(m.AwsSesRegion, awsSesDefaultRegion)
 
 	// Always set the region; add static credentials only when supplied
 	awsOptions := []func(*config.LoadOptions) error{config.WithRegion(region)}
@@ -162,22 +205,17 @@ func (m *MailService) loadAwsSesService(staticCreds bool) (awsSesInterface, erro
 	}
 
 	// Create the SES client, applying a custom endpoint when provided
-	sesClient := ses.NewFromConfig(awsConfig)
+	var optFns []func(*ses.Options)
 	if len(m.AwsSesEndpoint) > 0 {
-		sesClient = ses.NewFromConfig(awsConfig, func(o *ses.Options) {
+		optFns = append(optFns, func(o *ses.Options) {
 			o.BaseEndpoint = &m.AwsSesEndpoint
 		})
 	}
 
-	return &awsSesSdkV2Client{client: sesClient}, nil
+	return &awsSesSdkV2Client{client: ses.NewFromConfig(awsConfig, optFns...)}, nil
 }
 
 // containsServiceProvider is a simple lookup for a service provider in a list of providers
 func containsServiceProvider(s []ServiceProvider, e ServiceProvider) bool {
-	for _, a := range s {
-		if a == e {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(s, e)
 }

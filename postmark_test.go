@@ -4,13 +4,23 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"os"
 	"testing"
 
 	"github.com/mrz1836/postmark"
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+// capturingPostmarkInterface records the last email passed to SendEmail so tests
+// can assert on the built postmark.Email payload
+type capturingPostmarkInterface struct {
+	lastEmail postmark.Email
+}
+
+// SendEmail captures the email and returns a successful response
+func (m *capturingPostmarkInterface) SendEmail(_ context.Context, email postmark.Email) (postmark.EmailResponse, error) {
+	m.lastEmail = email
+	return postmark.EmailResponse{}, nil
+}
 
 // mockPostmarkInterface is a mocking interface for Postmark
 type mockPostmarkInterface struct{}
@@ -18,7 +28,7 @@ type mockPostmarkInterface struct{}
 // SendEmail is for mocking
 func (m *mockPostmarkInterface) SendEmail(_ context.Context, email postmark.Email) (postmark.EmailResponse, error) {
 	// Success
-	if email.To == "test@domain.com" {
+	if email.To == testRecipientSuccess {
 		return *new(postmark.EmailResponse), nil
 	}
 
@@ -53,59 +63,61 @@ func newMockPostmarkClient() postmarkInterface {
 func TestSendViaPostmark(t *testing.T) {
 	t.Parallel()
 
-	// Start the service
-	mail := new(MailService)
-
-	// Set all the defaults, toggle all warnings
-	mail.AutoText = true
-	mail.FromDomain = "example.com"
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
-	mail.Important = true
-	mail.TrackClicks = true
-	mail.TrackOpens = true
-
-	// Setup mock client
+	// Setup mock client and a ready-to-send email
 	client := newMockPostmarkClient()
-
-	// New email
-	email := mail.NewEmail()
-	email.HTMLContent = "<html>Test</html>"
-	email.PlainTextContent = "Test"
-
-	// Add an attachment
-	f, err := os.Open("examples/test-attachment-file.txt")
-	if err != nil {
-		require.NoError(t, err, "failed to attach file")
-	} else {
-		email.AddAttachment("test-attachment-file.txt", "text/plain", f)
-	}
+	email := newProviderTestEmail(t)
 
 	// Create the list of tests
-	tests := []struct {
-		name          string
-		input         string
-		expectedError bool
-	}{
-		{"successful send", "test@domain.com", false},
+	cases := []providerSendCase{
+		{"successful send", testRecipientSuccess, false},
 		{"invalid domain name error", "test@badhostname.com", true},
 		{"invalid token error", "test@badtoken.com", true},
 		{"error code failure", "test@errorcode.com", true},
 	}
 
 	// Loop tests
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			email.Recipients = []string{test.input}
-			email.RecipientsCc = []string{test.input}
-			email.RecipientsBcc = []string{test.input}
-			email.ReplyToAddress = test.input
-			err := sendViaPostmark(context.Background(), client, email)
-			if test.expectedError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
+	runProviderSendCases(t, email, cases, func() error {
+		return sendViaPostmark(context.Background(), client, email)
+	})
+}
+
+// TestSendViaPostmark_FromHeader confirms the From header is built as a valid
+// RFC 5322 "Name <address>" value when a FromName is present
+func TestSendViaPostmark_FromHeader(t *testing.T) {
+	t.Parallel()
+
+	email := newProviderTestEmail(t)
+	email.Recipients = []string{testRecipientSuccess}
+
+	t.Run("from name and address", func(t *testing.T) {
+		capture := &capturingPostmarkInterface{}
+		err := sendViaPostmark(context.Background(), capture, email)
+		require.NoError(t, err)
+		require.Equal(t, "No Reply <no-reply@example.com>", capture.lastEmail.From)
+	})
+
+	t.Run("address only when from name is empty", func(t *testing.T) {
+		email.FromName = ""
+		capture := &capturingPostmarkInterface{}
+		err := sendViaPostmark(context.Background(), capture, email)
+		require.NoError(t, err)
+		require.Equal(t, "no-reply@example.com", capture.lastEmail.From)
+	})
+}
+
+// TestSendViaPostmark_AttachmentError confirms an attachment whose reader fails
+// surfaces the read error before sending
+func TestSendViaPostmark_AttachmentError(t *testing.T) {
+	t.Parallel()
+
+	email := newProviderTestEmail(t)
+	email.Recipients = []string{testRecipientSuccess}
+	email.Attachments = []Attachment{
+		{FileName: "bad.txt", FileType: "text/plain", FileReader: errReader{}},
 	}
+
+	capture := &capturingPostmarkInterface{}
+	err := sendViaPostmark(context.Background(), capture, email)
+	require.ErrorIs(t, err, ErrBadHostname)
+	require.Empty(t, capture.lastEmail.From, "send should not be attempted when an attachment fails to encode")
 }

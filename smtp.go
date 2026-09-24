@@ -37,8 +37,10 @@ func newSMTPClient(host string, auth smtp.Auth) smtpInterface {
 	return mailyak.New(host, auth)
 }
 
-// sendViaSMTP sends an email using the smtp service
-func sendViaSMTP(client smtpInterface, email *Email) (err error) {
+// populateMailyakMessage fills a mailyak message (or any smtpInterface) with the
+// fields shared by the mailyak-based providers (AWS SES and SMTP): recipients,
+// sender, subject, reply-to, body parts, attachments, and importance headers
+func populateMailyakMessage(client smtpInterface, email *Email) {
 	// Add the "to" recipients
 	client.To(email.Recipients...)
 
@@ -74,18 +76,22 @@ func sendViaSMTP(client smtpInterface, email *Email) (err error) {
 	}
 
 	// Add any attachments
-	if len(email.Attachments) > 0 {
-		for _, att := range email.Attachments {
-			client.Attach(att.FileName, att.FileReader)
-		}
+	for _, att := range email.Attachments {
+		client.Attach(att.FileName, att.FileReader)
 	}
 
 	// Add importance?
 	if email.Important {
-		client.AddHeader("X-Priority", "1 (Highest)")
-		client.AddHeader("X-MSMail-Priority", "High")
-		client.AddHeader("Importance", "High")
+		client.AddHeader(headerXPriority, headerXPriorityValue)
+		client.AddHeader(headerXMSMailPriority, headerHighValue)
+		client.AddHeader(headerImportance, headerHighValue)
 	}
+}
+
+// sendViaSMTP sends an email using the smtp service
+func sendViaSMTP(client smtpInterface, email *Email) (err error) {
+	// Populate the shared mailyak message fields
+	populateMailyakMessage(client, email)
 
 	// Warn about features that are set but not available
 	if email.TrackClicks {

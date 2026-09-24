@@ -12,6 +12,8 @@ require (
 	github.com/domodwyer/mailyak v3.1.1+incompatible
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
 	github.com/mrz1836/postmark v1.9.2
+	github.com/sendgrid/rest v2.6.9+incompatible
+	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
 	github.com/stretchr/testify v1.12.1
 )
 

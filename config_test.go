@@ -35,6 +35,66 @@ func TestContainsServiceProvider(t *testing.T) {
 	}
 }
 
+// TestServiceProvider_String will test the String() method
+func TestServiceProvider_String(t *testing.T) {
+	t.Parallel()
+
+	// Create the list of tests
+	tests := []struct {
+		name     string
+		provider ServiceProvider
+		expected string
+	}{
+		{"aws ses", AwsSes, "AwsSes"},
+		{"mandrill", Mandrill, "Mandrill"},
+		{"postmark", Postmark, "Postmark"},
+		{"smtp", SMTP, "SMTP"},
+		{"unknown provider", ServiceProvider(999), "Unknown"},
+	}
+
+	// Loop tests
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equal(t, test.expected, test.provider.String())
+		})
+	}
+}
+
+// TestMailService_StartUpRecipientCaps will test that StartUp() respects
+// explicitly configured recipient caps and only applies the defaults when unset
+func TestMailService_StartUpRecipientCaps(t *testing.T) {
+	t.Parallel()
+
+	t.Run("defaults applied when caps are unset", func(t *testing.T) {
+		service := new(MailService)
+		service.FromUsername = testUsernameEmail
+		service.FromDomain = testDomainEmail
+		service.MandrillAPIKey = "1234567"
+
+		err := service.StartUp()
+		require.NoError(t, err)
+		assert.Equal(t, maxToRecipients, service.MaxToRecipients)
+		assert.Equal(t, maxCcRecipients, service.MaxCcRecipients)
+		assert.Equal(t, maxBccRecipients, service.MaxBccRecipients)
+	})
+
+	t.Run("configured caps are preserved", func(t *testing.T) {
+		service := new(MailService)
+		service.FromUsername = testUsernameEmail
+		service.FromDomain = testDomainEmail
+		service.MandrillAPIKey = "1234567"
+		service.MaxToRecipients = 10
+		service.MaxCcRecipients = 20
+		service.MaxBccRecipients = 30
+
+		err := service.StartUp()
+		require.NoError(t, err)
+		assert.Equal(t, 10, service.MaxToRecipients)
+		assert.Equal(t, 20, service.MaxCcRecipients)
+		assert.Equal(t, 30, service.MaxBccRecipients)
+	})
+}
+
 // TestMailService_StartUp will test the StartUp() method
 func TestMailService_StartUp(t *testing.T) {
 	t.Parallel()
@@ -83,6 +143,13 @@ func TestMailService_StartUp(t *testing.T) {
 	service.SMTPPort = 25
 	err = service.StartUp()
 	require.NoError(t, err)
+
+	// Add SendGrid
+	service.SendGridAPIKey = "1234567"
+	err = service.StartUp()
+	require.NoError(t, err)
+	assert.True(t, containsServiceProvider(service.AvailableProviders, SendGrid),
+		"SendGrid should load when the api key is set")
 }
 
 // TestMailService_StartUpAwsSesIAMRole tests that the AWS SES provider loads via

@@ -28,6 +28,9 @@ func main() {
 	// Run the SMTP example
 	// smtpExample()
 
+	// Run the SendGrid example
+	// sendGridExample()
+
 	// Example using ALL options available
 	// allOptionsExample()
 }
@@ -63,7 +66,7 @@ func awsSesExample() {
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -74,7 +77,7 @@ func awsSesExample() {
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -107,7 +110,7 @@ func awsSesIAMRoleExample() { //nolint:unused // this is an example function
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -118,7 +121,7 @@ func awsSesIAMRoleExample() { //nolint:unused // this is an example function
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -151,7 +154,7 @@ func mandrillExample() { //nolint:unused // this is an example function
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -162,7 +165,7 @@ func mandrillExample() { //nolint:unused // this is an example function
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -195,7 +198,7 @@ func postmarkExample() { //nolint:unused // this is an example function
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -206,7 +209,7 @@ func postmarkExample() { //nolint:unused // this is an example function
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -248,7 +251,7 @@ func smtpExample() { //nolint:unused // this is an example function
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Create and send a basic email
@@ -259,7 +262,55 @@ func smtpExample() { //nolint:unused // this is an example function
 
 	// Send the email
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
+// sendGridExample shows an example using SendGrid as the provider
+func sendGridExample() { //nolint:unused // this is an example function
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.SendGridAPIKey = os.Getenv("EMAIL_SENDGRID_API_KEY")
+	if len(mail.SendGridAPIKey) == 0 {
+		log.Fatal("missing env: EMAIL_SENDGRID_API_KEY")
+	}
+	provider := gomail.SendGrid
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using SendGrid"
+
+	// SendGrid supports open & click tracking natively
+	email.TrackClicks = true
+	email.TrackOpens = true
+
+	// Send the email
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 	log.Printf("email sent!")
 }
@@ -289,16 +340,19 @@ func allOptionsExample() { //nolint:unused // this is an example function
 	mail.SMTPUsername = os.Getenv("EMAIL_SMTP_USERNAME")          // johndoe
 	mail.SMTPPassword = os.Getenv("EMAIL_SMTP_PASSWORD")          // secretPassword
 
-	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark
+	// SendGrid
+	mail.SendGridAPIKey = os.Getenv("EMAIL_SENDGRID_API_KEY") // SG.xxxx...
+
+	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark SendGrid
 
 	// Start the service
 	err := mail.StartUp()
 	if err != nil {
-		log.Printf("error in StartUp: %s using provider: %x", err.Error(), provider)
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Available services given the config above
-	log.Printf("available service providers: %x", mail.AvailableProviders)
+	log.Printf("available service providers: %v", mail.AvailableProviders)
 
 	// Create a new email
 	email := mail.NewEmail()
@@ -326,7 +380,7 @@ func allOptionsExample() { //nolint:unused // this is an example function
 
 	// Send the email (basic example using one provider)
 	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
-		log.Fatalf("error in SendEmail: %s using provider: %x", err.Error(), provider)
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
 	}
 
 	// Congrats!

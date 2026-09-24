@@ -14,23 +14,29 @@ import (
 
 // awsSesInterface is an interface for ses/mocking
 type awsSesInterface interface {
-	SendRawEmail(raw []byte) (string, error)
+	SendRawEmail(ctx context.Context, raw []byte) (string, error)
+}
+
+// sesSendRawEmailAPI is the narrow slice of the AWS SDK v2 SES client used by
+// awsSesSdkV2Client; *ses.Client satisfies it and it enables mocking in tests
+type sesSendRawEmailAPI interface {
+	SendRawEmail(ctx context.Context, params *ses.SendRawEmailInput, optFns ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
 }
 
 // awsSesSdkV2Client wraps the AWS SDK v2 SES client to implement awsSesInterface
 type awsSesSdkV2Client struct {
-	client *ses.Client
+	client sesSendRawEmailAPI
 }
 
 // SendRawEmail implements the awsSesInterface using AWS SDK v2
-func (c *awsSesSdkV2Client) SendRawEmail(raw []byte) (string, error) {
+func (c *awsSesSdkV2Client) SendRawEmail(ctx context.Context, raw []byte) (string, error) {
 	input := &ses.SendRawEmailInput{
 		RawMessage: &types.RawMessage{
 			Data: raw,
 		},
 	}
 
-	result, err := c.client.SendRawEmail(context.TODO(), input)
+	result, err := c.client.SendRawEmail(ctx, input)
 	if err != nil {
 		return "", err
 	}
@@ -43,6 +49,12 @@ func (c *awsSesSdkV2Client) SendRawEmail(raw []byte) (string, error) {
 		}
 	}
 
+	// Guard against a nil MessageId on an otherwise successful response
+	messageID := ""
+	if result.MessageId != nil {
+		messageID = *result.MessageId
+	}
+
 	responseStr := fmt.Sprintf(`<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
   <SendRawEmailResult>
     <MessageId>%s</MessageId>
@@ -50,63 +62,18 @@ func (c *awsSesSdkV2Client) SendRawEmail(raw []byte) (string, error) {
   <ResponseMetadata>
     <RequestId>%s</RequestId>
   </ResponseMetadata>
-</SendRawEmailResponse>`, *result.MessageId, requestID)
+</SendRawEmailResponse>`, messageID, requestID)
 
 	return responseStr, nil
 }
 
 // sendViaAwsSes sends an email using the AWS SES service
-func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
+func sendViaAwsSes(ctx context.Context, client awsSesInterface, email *Email) (err error) {
 	// Create new mail message
 	mail := mailyak.New("", nil)
 
-	// Add the "to" recipients
-	mail.To(email.Recipients...)
-
-	// Add the "cc" recipients
-	if len(email.RecipientsCc) > 0 {
-		mail.Cc(email.RecipientsCc...)
-	}
-
-	// Add the "bcc" recipients
-	if len(email.RecipientsBcc) > 0 {
-		mail.WriteBccHeader(true)
-		mail.Bcc(email.RecipientsBcc...)
-	}
-
-	// Add the basics
-	mail.From(email.FromAddress)
-	mail.FromName(email.FromName)
-	mail.Subject(email.Subject)
-
-	// Add a custom reply to address
-	if len(email.ReplyToAddress) > 0 {
-		mail.ReplyTo(email.ReplyToAddress)
-	}
-
-	// Add plain text
-	if len(email.PlainTextContent) > 0 {
-		mail.Plain().Set(email.PlainTextContent)
-	}
-
-	// Add html
-	if len(email.HTMLContent) > 0 {
-		mail.HTML().Set(email.HTMLContent)
-	}
-
-	// Add any attachments
-	if len(email.Attachments) > 0 {
-		for _, att := range email.Attachments {
-			mail.Attach(att.FileName, att.FileReader)
-		}
-	}
-
-	// Add importance?
-	if email.Important {
-		mail.AddHeader("X-Priority", "1 (Highest)")
-		mail.AddHeader("X-MSMail-Priority", "High")
-		mail.AddHeader("Importance", "High")
-	}
+	// Populate the shared mailyak message fields
+	populateMailyakMessage(mail, email)
 
 	// Warn about features that are set but not available
 	if email.TrackClicks {
@@ -127,7 +94,7 @@ func sendViaAwsSes(client awsSesInterface, email *Email) (err error) {
 
 	// Send the message post and check the response
 	var awsResponse string
-	awsResponse, err = client.SendRawEmail(buf.Bytes())
+	awsResponse, err = client.SendRawEmail(ctx, buf.Bytes())
 	if err != nil {
 		return err
 	} else if !strings.Contains(awsResponse, "SendRawEmailResult") {
