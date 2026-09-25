@@ -32,9 +32,25 @@ type smtpInterface interface {
 	WriteBccHeader(shouldWrite bool)
 }
 
+// smtpClientFactory builds an SMTP client for the given connection string and auth
+type smtpClientFactory func(host string, auth smtp.Auth) smtpInterface
+
 // newSMTPClient will create a new yak client given the connection string and auth
 func newSMTPClient(host string, auth smtp.Auth) smtpInterface {
 	return mailyak.New(host, auth)
+}
+
+// newSMTPMessageClient returns a fresh SMTP client for a single send.
+//
+// A mailyak client holds the state of one message (recipients, body parts,
+// attachments, headers, and the date), so it must never be reused across
+// sends: a reused client leaks that state into the next email and races when
+// emails are sent concurrently.
+func (m *MailService) newSMTPMessageClient() smtpInterface {
+	if m.smtpClientFactory != nil {
+		return m.smtpClientFactory(m.smtpAddr, m.smtpAuth)
+	}
+	return newSMTPClient(m.smtpAddr, m.smtpAuth)
 }
 
 // populateMailyakMessage fills a mailyak message (or any smtpInterface) with the

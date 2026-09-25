@@ -271,7 +271,7 @@ func TestMailService_SendEmail(t *testing.T) {
 	// Set mock interface(s)
 	mail.postmarkService = &mockPostmarkInterface{}
 	mail.mandrillService = &mockMandrillInterface{}
-	mail.smtpClient = newMockSMTPClient()
+	mail.smtpClientFactory = newMockSMTPClientFactory
 	mail.awsSesService = &mockAwsSesInterface{}
 	mail.sendGridService = &mockSendGridInterface{}
 
