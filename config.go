@@ -83,8 +83,9 @@ type MailService struct {
 	mandrillService     mandrillInterface // Mandrill api client
 	postmarkService     postmarkInterface // Postmark api client
 	sendGridService     sendGridInterface // SendGrid api client
+	smtpAddr            string            // SMTP server address (host:port)
 	smtpAuth            smtp.Auth         // Auth credentials for SMTP
-	smtpClient          smtpInterface     // SMTP client
+	smtpClientFactory   smtpClientFactory // Builds the SMTP client for each send (nil uses newSMTPClient)
 	SMTPUsername        string            `json:"smtp_username" mapstructure:"smtp_username"`               // ie: testuser
 	MaxBccRecipients    int               `json:"max_bcc_recipients" mapstructure:"max_bcc_recipients"`     // max amount for BCC
 	MaxCcRecipients     int               `json:"max_cc_recipients" mapstructure:"max_cc_recipients"`       // max amount for CC
@@ -158,8 +159,8 @@ func (m *MailService) StartUp() (err error) {
 		// Set the credentials
 		m.smtpAuth = smtp.PlainAuth("", m.SMTPUsername, m.SMTPPassword, m.SMTPHost)
 
-		// Create a new client from the connection string
-		m.smtpClient = newSMTPClient(net.JoinHostPort(m.SMTPHost, strconv.Itoa(m.SMTPPort)), m.smtpAuth)
+		// Store the connection string; a new client is built for every send
+		m.smtpAddr = net.JoinHostPort(m.SMTPHost, strconv.Itoa(m.SMTPPort))
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, SMTP)

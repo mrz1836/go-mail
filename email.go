@@ -209,7 +209,7 @@ func (m *MailService) SendEmail(ctx context.Context, email *Email, provider Serv
 	case Postmark:
 		err = sendViaPostmark(ctx, m.postmarkService, email)
 	case SMTP:
-		err = sendViaSMTP(m.smtpClient, email)
+		err = sendViaSMTP(m.newSMTPMessageClient(), email)
 	case SendGrid:
 		err = sendViaSendGrid(ctx, m.sendGridService, email)
 	default:
