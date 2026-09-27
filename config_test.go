@@ -49,6 +49,7 @@ func TestServiceProvider_String(t *testing.T) {
 		{"mandrill", Mandrill, "Mandrill"},
 		{"postmark", Postmark, "Postmark"},
 		{"smtp", SMTP, "SMTP"},
+		{"sendgrid", SendGrid, "SendGrid"},
 		{"unknown provider", ServiceProvider(999), "Unknown"},
 	}
 
