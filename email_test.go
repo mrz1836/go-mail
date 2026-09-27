@@ -264,6 +264,9 @@ func TestMailService_SendEmail(t *testing.T) {
 	// Use the SendGrid provider
 	mail.SendGridAPIKey = "1234567"
 
+	// Use the Resend provider
+	mail.ResendAPIKey = "re_1234567"
+
 	// Start the mail service
 	err := mail.StartUp()
 	require.NoError(t, err)
@@ -274,6 +277,7 @@ func TestMailService_SendEmail(t *testing.T) {
 	mail.smtpClientFactory = newMockSMTPClientFactory
 	mail.awsSesService = &mockAwsSesInterface{}
 	mail.sendGridService = &mockSendGridInterface{}
+	mail.resendService = &mockResendInterface{}
 
 	email := mail.NewEmail()
 	email.Subject = "Test subject"
@@ -298,6 +302,10 @@ func TestMailService_SendEmail(t *testing.T) {
 
 	// Valid (SendGrid)
 	err = mail.SendEmail(context.Background(), email, SendGrid)
+	require.NoError(t, err)
+
+	// Valid (Resend)
+	err = mail.SendEmail(context.Background(), email, Resend)
 	require.NoError(t, err)
 }
 
@@ -335,6 +343,10 @@ func TestMailService_SendEmailInValid(t *testing.T) {
 
 	// Invalid provider - SendGrid not configured / available
 	err = mail.SendEmail(context.Background(), email, SendGrid)
+	require.ErrorIs(t, err, ErrProviderNotFound)
+
+	// Invalid provider - Resend not configured / available
+	err = mail.SendEmail(context.Background(), email, Resend)
 	require.ErrorIs(t, err, ErrProviderNotFound)
 
 	// Invalid - subject

@@ -50,6 +50,7 @@ func TestServiceProvider_String(t *testing.T) {
 		{"postmark", Postmark, "Postmark"},
 		{"smtp", SMTP, "SMTP"},
 		{"sendgrid", SendGrid, "SendGrid"},
+		{"resend", Resend, "Resend"},
 		{"unknown provider", ServiceProvider(999), "Unknown"},
 	}
 
@@ -151,6 +152,28 @@ func TestMailService_StartUp(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, containsServiceProvider(service.AvailableProviders, SendGrid),
 		"SendGrid should load when the api key is set")
+
+	// Add Resend
+	service.ResendAPIKey = "re_1234567"
+	err = service.StartUp()
+	require.NoError(t, err)
+	assert.True(t, containsServiceProvider(service.AvailableProviders, Resend),
+		"Resend should load when the api key is set")
+}
+
+// TestMailService_StartUpResendOnly tests that Resend alone is enough to start the service
+func TestMailService_StartUpResendOnly(t *testing.T) {
+	t.Parallel()
+
+	service := new(MailService)
+	service.FromUsername = testUsernameEmail
+	service.FromDomain = testDomainEmail
+	service.ResendAPIKey = "re_1234567"
+
+	err := service.StartUp()
+	require.NoError(t, err)
+	assert.Equal(t, []ServiceProvider{Resend}, service.AvailableProviders)
+	assert.NotNil(t, service.resendService)
 }
 
 // TestMailService_StartUpAwsSesIAMRole tests that the AWS SES provider loads via

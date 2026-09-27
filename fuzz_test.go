@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"html/template"
 	"io"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -28,14 +29,15 @@ func FuzzContainsServiceProvider(f *testing.F) {
 	f.Add([]byte{0, 1}, int(0))       // AwsSes, Mandrill -> search AwsSes
 	f.Add([]byte{2, 3}, int(2))       // Postmark, SMTP -> search Postmark
 	f.Add([]byte{}, int(0))           // empty -> search AwsSes
-	f.Add([]byte{0, 1, 2, 3}, int(3)) // all providers -> search SMTP
+	f.Add([]byte{0, 1, 2, 3}, int(3)) // AwsSes..SMTP -> search SMTP
+	f.Add([]byte{4, 5}, int(5))       // SendGrid, Resend -> search Resend
 
 	f.Fuzz(func(t *testing.T, providerBytes []byte, searchProvider int) {
 		// Convert bytes to ServiceProvider slice
 		providers := make([]ServiceProvider, 0, len(providerBytes))
 		for _, b := range providerBytes {
 			// Keep provider values within valid range
-			if b <= 3 {
+			if b <= byte(Resend) {
 				providers = append(providers, ServiceProvider(b))
 			}
 		}
@@ -503,5 +505,32 @@ func FuzzAttachmentProcessing(f *testing.F) {
 		readContent, err := io.ReadAll(attachment.FileReader)
 		require.NoError(t, err, "should be able to read attachment content")
 		require.Equal(t, content, string(readContent), "content should match")
+	})
+}
+
+// resendTagPattern is the tag name format Resend accepts
+var resendTagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
+
+// FuzzResendTags tests that resendTags always produces valid, unique Resend tags
+func FuzzResendTags(f *testing.F) {
+	// Seed corpus with valid, invalid, empty, and duplicate tags
+	f.Add("admin_alert", "Signup-2")
+	f.Add("admin alert!", "admin_alert_")
+	f.Add("", "tag")
+	f.Add("café", "tag🚀")
+	f.Add(strings.Repeat("a", 300), strings.Repeat("a", 257))
+
+	f.Fuzz(func(t *testing.T, tag1, tag2 string) {
+		tags := resendTags([]string{tag1, tag2, tag1})
+
+		seen := make(map[string]struct{}, len(tags))
+		for _, tag := range tags {
+			require.Regexp(t, resendTagPattern, tag.Name, "tag name must be valid for Resend")
+			require.Equal(t, resendTagValue, tag.Value)
+
+			_, dup := seen[tag.Name]
+			require.False(t, dup, "tag names must be unique")
+			seen[tag.Name] = struct{}{}
+		}
 	})
 }

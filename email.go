@@ -212,6 +212,8 @@ func (m *MailService) SendEmail(ctx context.Context, email *Email, provider Serv
 		err = sendViaSMTP(m.newSMTPMessageClient(), email)
 	case SendGrid:
 		err = sendViaSendGrid(ctx, m.sendGridService, email)
+	case Resend:
+		err = sendViaResend(ctx, m.resendService, email)
 	default:
 		err = providerNotFoundErr(provider, m.AvailableProviders)
 	}
