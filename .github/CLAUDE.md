@@ -3,7 +3,7 @@
 **Quick checklist for Claude Code when working with the go-mail package**
 
 ## 🎯 Project Overview
-Multi-provider email library for Go with support for AWS SES, Mandrill, Postmark, and SMTP. Interface-based architecture with extensive testing and security scanning.
+Multi-provider email library for Go with support for AWS SES, Mandrill, Postmark, Resend, SendGrid, and SMTP. Interface-based architecture with extensive testing and security scanning.
 
 ## 🏗️ Core Architecture
 
@@ -21,7 +21,7 @@ type providerInterface interface {
 }
 ```
 
-Provider files: `aws_ses.go`, `mandrill.go`, `postmark.go`, `smtp.go`
+Provider files: `aws_ses.go`, `mandrill.go`, `postmark.go`, `resend.go`, `sendgrid.go`, `smtp.go`
 
 ## 🔧 Essential Development Commands
 
@@ -121,6 +121,8 @@ if email.TrackClicks {
 ├── aws_ses.go         # AWS SES implementation
 ├── mandrill.go        # Mandrill implementation
 ├── postmark.go        # Postmark implementation
+├── resend.go          # Resend implementation
+├── sendgrid.go        # SendGrid implementation
 ├── smtp.go           # SMTP implementation
 ├── errors.go         # Sentinel error definitions
 └── examples/         # Usage examples
@@ -130,6 +132,8 @@ if email.TrackClicks {
 - AWS SDK v2 for SES
 - `gochimp` for Mandrill
 - `postmark` client library
+- `resend-go/v4` for Resend
+- `sendgrid-go` for SendGrid
 - `mailyak` for SMTP/raw email
 - `douceur/inliner` for CSS inlining
 

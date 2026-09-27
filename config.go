@@ -26,6 +26,7 @@ const (
 	Postmark                        // Postmark Email Service
 	SMTP                            // SMTP Email Service
 	SendGrid                        // SendGrid Email Service
+	Resend                          // Resend Email Service
 )
 
 // String returns the human-readable name of the service provider
@@ -41,6 +42,8 @@ func (s ServiceProvider) String() string {
 		return "SMTP"
 	case SendGrid:
 		return "SendGrid"
+	case Resend:
+		return "Resend"
 	default:
 		return "Unknown"
 	}
@@ -76,12 +79,14 @@ type MailService struct {
 	FromUsername        string            `json:"from_username" mapstructure:"from_username"`                 // ie: no-reply
 	MandrillAPIKey      string            `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`           // mandrill api key
 	PostmarkServerToken string            `json:"postmark_server_token" mapstructure:"postmark_server_token"` // ie: abc123...
+	ResendAPIKey        string            `json:"resend_api_key" mapstructure:"resend_api_key"`               // resend api key (ie: re_xxxx...)
 	SMTPHost            string            `json:"smtp_host" mapstructure:"smtp_host"`                         // ie: example.com
 	SMTPPassword        string            `json:"smtp_password" mapstructure:"smtp_password"`                 // ie: secretPassword
 	SendGridAPIKey      string            `json:"sendgrid_api_key" mapstructure:"sendgrid_api_key"`           // sendgrid api key
 	awsSesService       awsSesInterface   // AWS SES client
 	mandrillService     mandrillInterface // Mandrill api client
 	postmarkService     postmarkInterface // Postmark api client
+	resendService       resendInterface   // Resend api client
 	sendGridService     sendGridInterface // SendGrid api client
 	smtpAddr            string            // SMTP server address (host:port)
 	smtpAuth            smtp.Auth         // Auth credentials for SMTP
@@ -172,6 +177,14 @@ func (m *MailService) StartUp() (err error) {
 
 		// Add to the list of available providers
 		m.AvailableProviders = append(m.AvailableProviders, SendGrid)
+	}
+
+	// If the Resend api key is set, load the service
+	if len(m.ResendAPIKey) > 0 {
+		m.resendService = newResendClient(m.ResendAPIKey)
+
+		// Add to the list of available providers
+		m.AvailableProviders = append(m.AvailableProviders, Resend)
 	}
 
 	// No service providers found

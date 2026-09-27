@@ -22,4 +22,5 @@ var (
 	ErrMessageNotSent          = errors.New("message status and not sent")
 	ErrPostmarkError           = errors.New("error from postmark")
 	ErrSendGridError           = errors.New("error from sendgrid")
+	ErrResendError             = errors.New("error from resend")
 )
