@@ -2,112 +2,160 @@ package gomail
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"log"
+	"maps"
 	"net/http"
+	"net/mail"
+	"slices"
 
 	"github.com/sendgrid/rest"
 	sendgrid "github.com/sendgrid/sendgrid-go"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 )
 
-// sendGridInterface is an interface for SendGrid/mocking
-type sendGridInterface interface {
-	SendWithContext(ctx context.Context, email *mail.SGMailV3) (*rest.Response, error)
+// headerSendGridMessageID is the response header holding the SendGrid message id
+const headerSendGridMessageID = "X-Message-Id"
+
+// SendGridClient is the SendGrid API used by SendGridProvider; *sendgrid.Client satisfies it
+type SendGridClient interface {
+	SendWithContext(ctx context.Context, email *sgmail.SGMailV3) (*rest.Response, error)
 }
 
-// newSendGridClient creates a new SendGrid client; *sendgrid.Client already
-// satisfies sendGridInterface, so no wrapper type is needed
-func newSendGridClient(apiKey string) sendGridInterface {
-	return sendgrid.NewSendClient(apiKey)
+// SendGridProvider sends email through SendGrid.
+//
+// Tags become categories and Metadata becomes custom args. Open and click
+// tracking are always set explicitly from the email, so the account defaults
+// do not apply.
+type SendGridProvider struct {
+	client SendGridClient
 }
 
-// sendViaSendGrid sends an email using the SendGrid service
-func sendViaSendGrid(ctx context.Context, client sendGridInterface, email *Email) (err error) {
-	// Create the SendGrid message with the sender and subject
-	message := mail.NewV3Mail()
-	message.SetFrom(mail.NewEmail(email.FromName, email.FromAddress))
+// NewSendGridProvider creates a SendGrid provider.
+//
+// A *sendgrid.Client stores each request body on itself while sending, so it
+// is not safe for concurrent use; it is wrapped so every send uses its own copy
+// of the request (keeping any custom host, subuser or data residency setting).
+func NewSendGridProvider(client SendGridClient) *SendGridProvider {
+	if sgClient, ok := client.(*sendgrid.Client); ok && sgClient != nil {
+		client = &sendGridRequestClient{request: sgClient.Request}
+	}
+	return &SendGridProvider{client: client}
+}
+
+// Send sends the email through SendGrid; the result MessageID is the X-Message-Id
+// response header and Response is the *rest.Response
+func (p *SendGridProvider) Send(ctx context.Context, email *Email) (*SendResult, error) {
+	env, err := parseEnvelope(email)
+	if err != nil {
+		return nil, err
+	}
+
+	var attachments []attachmentData
+	if attachments, err = readAttachments(email); err != nil {
+		return nil, err
+	}
+
+	message := sgmail.NewV3Mail()
+	message.SetFrom(sgmail.NewEmail(env.from.Name, env.from.Address))
 	message.Subject = email.Subject
 
 	// Build a single personalization holding all recipients
-	personalization := mail.NewPersonalization()
-	for _, recipient := range email.Recipients {
-		personalization.AddTos(mail.NewEmail("", recipient))
-	}
-	for _, recipient := range email.RecipientsCc {
-		personalization.AddCCs(mail.NewEmail("", recipient))
-	}
-	for _, recipient := range email.RecipientsBcc {
-		personalization.AddBCCs(mail.NewEmail("", recipient))
-	}
+	personalization := sgmail.NewPersonalization()
+	personalization.AddTos(sendGridEmails(env.to)...)
+	personalization.AddCCs(sendGridEmails(env.cc)...)
+	personalization.AddBCCs(sendGridEmails(env.bcc)...)
 	message.AddPersonalizations(personalization)
 
 	// Add content (SendGrid requires the plain-text part before the HTML part)
 	if len(email.PlainTextContent) > 0 {
-		message.AddContent(mail.NewContent("text/plain", email.PlainTextContent))
+		message.AddContent(sgmail.NewContent(mimeTypePlain, email.PlainTextContent))
 	}
 	if len(email.HTMLContent) > 0 {
-		message.AddContent(mail.NewContent("text/html", email.HTMLContent))
+		message.AddContent(sgmail.NewContent(mimeTypeHTML, email.HTMLContent))
 	}
 
-	// Add a custom reply to address
-	if len(email.ReplyToAddress) > 0 {
-		message.SetReplyTo(mail.NewEmail("", email.ReplyToAddress))
+	if env.replyTo != nil {
+		message.SetReplyTo(sgmail.NewEmail(env.replyTo.Name, env.replyTo.Address))
 	}
-
-	// Add tags as SendGrid categories
 	if len(email.Tags) > 0 {
 		message.AddCategories(email.Tags...)
 	}
-
-	// Add importance headers
-	if email.Important {
-		message.SetHeader(headerXPriority, headerXPriorityValue)
-		message.SetHeader(headerXMSMailPriority, headerHighValue)
-		message.SetHeader(headerImportance, headerHighValue)
+	for _, key := range slices.Sorted(maps.Keys(email.Metadata)) {
+		message.SetCustomArg(key, email.Metadata[key])
+	}
+	for _, h := range emailHeaders(email) {
+		message.SetHeader(h.name, h.value)
+	}
+	if !email.SendAt.IsZero() {
+		message.SetSendAt(int(email.SendAt.Unix()))
 	}
 
-	// SendGrid supports open/click tracking natively (no "unsupported" warning)
-	if email.TrackClicks || email.TrackOpens {
-		message.SetTrackingSettings(mail.NewTrackingSettings().
-			SetClickTracking(mail.NewClickTrackingSetting().SetEnable(email.TrackClicks).SetEnableText(email.TrackClicks)).
-			SetOpenTracking(mail.NewOpenTrackingSetting().SetEnable(email.TrackOpens)),
-		)
-	}
+	// Tracking is always explicit so the email flags are authoritative
+	message.SetTrackingSettings(sgmail.NewTrackingSettings().
+		SetClickTracking(sgmail.NewClickTrackingSetting().SetEnable(email.TrackClicks).SetEnableText(email.TrackClicks)).
+		SetOpenTracking(sgmail.NewOpenTrackingSetting().SetEnable(email.TrackOpens)),
+	)
 
-	// Warn about features that are set but not available
-	if email.AutoText {
-		log.Printf("warning: auto text is enabled, but SendGrid does not offer this feature")
-	}
-
-	// Convert attachments to SendGrid format
-	for _, attachment := range email.Attachments {
-
-		// Encode the attachment contents as base64
-		var encoded string
-		if encoded, err = encodeAttachmentBase64(attachment.FileReader); err != nil {
-			return err
+	// Convert attachments to SendGrid format (inline attachments use a content id)
+	for _, att := range attachments {
+		sgAttachment := sgmail.NewAttachment().
+			SetContent(base64.StdEncoding.EncodeToString(att.content)).
+			SetType(att.contentType).
+			SetFilename(att.name).
+			SetDisposition("attachment")
+		if att.inline() {
+			sgAttachment.SetDisposition("inline").SetContentID(att.contentID)
 		}
-
-		// Add to the message
-		message.AddAttachment(mail.NewAttachment().
-			SetContent(encoded).
-			SetType(attachment.FileType).
-			SetFilename(attachment.FileName).
-			SetDisposition("attachment"),
-		)
+		message.AddAttachment(sgAttachment)
 	}
 
-	// Send the message and check the response
+	applyProviderOptions[SendGridOption](email.ProviderOptions, message)
+
 	var resp *rest.Response
-	if resp, err = client.SendWithContext(ctx, message); err != nil {
-		return err
+	if resp, err = p.client.SendWithContext(ctx, message); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrSendGridError, err)
+	}
+	if resp == nil {
+		return nil, fmt.Errorf("error from sendgrid: empty response: %w", ErrSendGridError)
 	}
 
 	// SendGrid returns a 2xx status code on success
 	if resp.StatusCode < http.StatusOK || resp.StatusCode >= http.StatusMultipleChoices {
-		err = fmt.Errorf("error from sendgrid: status code %d, body: %s: %w", resp.StatusCode, resp.Body, ErrSendGridError)
+		return nil, fmt.Errorf("error from sendgrid: status code %d, body: %s: %w", resp.StatusCode, resp.Body, ErrSendGridError)
 	}
 
-	return err
+	return &SendResult{MessageID: http.Header(resp.Headers).Get(headerSendGridMessageID), Response: resp}, nil
+}
+
+// SupportsFeature reports whether SendGrid supports the feature
+func (p *SendGridProvider) SupportsFeature(feature Feature) bool {
+	return supportsFeature([]Feature{
+		FeatureMetadata, FeatureSendAt, FeatureTags, FeatureTrackClicks, FeatureTrackOpens,
+	}, feature)
+}
+
+// sendGridEmails converts addresses into SendGrid emails
+func sendGridEmails(addrs []*mail.Address) []*sgmail.Email {
+	emails := make([]*sgmail.Email, 0, len(addrs))
+	for _, addr := range addrs {
+		emails = append(emails, sgmail.NewEmail(addr.Name, addr.Address))
+	}
+	return emails
+}
+
+// sendGridRequestClient sends through SendGrid using a private copy of the
+// request for every send (see NewSendGridProvider)
+type sendGridRequestClient struct {
+	request rest.Request
+}
+
+// SendWithContext sends the email using a copy of the configured request
+func (c *sendGridRequestClient) SendWithContext(ctx context.Context, email *sgmail.SGMailV3) (*rest.Response, error) {
+	request := c.request
+	request.Headers = maps.Clone(c.request.Headers)
+	request.QueryParams = maps.Clone(c.request.QueryParams)
+
+	client := &sendgrid.Client{Request: request}
+	return client.SendWithContext(ctx, email)
 }

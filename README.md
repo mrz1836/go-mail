@@ -2,7 +2,7 @@
 
 # 📨&nbsp;&nbsp;go-mail
 
-**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/), [resend](https://resend.com/), [sendgrid](https://sendgrid.com/))**
+**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/), [resend](https://resend.com/), [sendgrid](https://sendgrid.com/), [smtp](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol))**
 
 <br/>
 
@@ -107,27 +107,198 @@ go get github.com/mrz1836/go-mail
 ## Documentation
 View the generated [documentation](https://pkg.go.dev/github.com/mrz1836/go-mail)
 
+### Quick Start
+```go
+package main
+
+import (
+    "context"
+    "log"
+
+    gomail "github.com/mrz1836/go-mail"
+)
+
+func main() {
+    // Configure the sender and at least one provider
+    mail := &gomail.MailService{
+        FromName:       "No Reply",
+        FromUsername:   "no-reply",
+        FromDomain:     "example.com",
+        SendGridAPIKey: "SG.xxxx",
+    }
+    if err := mail.StartUp(); err != nil {
+        log.Fatal(err)
+    }
+
+    // Create and send an email
+    email := mail.NewEmail()
+    email.Subject = "Welcome!"
+    email.HTMLContent = "<p>Thanks for signing up.</p>"
+    email.PlainTextContent = "Thanks for signing up."
+    email.Recipients = []string{"Jane Doe <jane@example.com>"}
+
+    result, err := mail.Send(context.Background(), email, gomail.SendGrid)
+    if err != nil {
+        log.Fatal(err)
+    }
+    log.Printf("sent via %s: %s", result.Provider, result.MessageID)
+}
+```
+
+More complete examples (every provider, attachments, templates, failover and
+provider options) are in [examples/examples.go](examples/examples.go).
+
 ### Features
-- Supports multiple service providers _(below)_
+- Supports multiple service providers _(below)_, plus your own through the `Provider` interface
+- Failover across providers, with the provider's message id returned from `Send`
+- Provider-specific features through typed options _(ie: Postmark message streams, SendGrid templates)_
 - AWS SES via static keys or the default credential chain _(IAM role)_
-- Support basic [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
+- [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) with STARTTLS or implicit TLS, optional authentication, and timeouts
 - Plain-text and HTML content
-- Multiple file attachments
+- Recipients with display names (`Jane Doe <jane@example.com>`); duplicates across `To`, `CC` and `BCC` are removed
+- Multiple file attachments, plus inline (`cid:`) images
+- Custom headers, including one-click `List-Unsubscribe` _(required by Gmail and Yahoo for bulk senders)_
+- Tags, metadata, scheduled sending and idempotency keys _(provider dependant)_
 - Open & click tracking _(provider dependant)_
 - Inject css into html content
 - Basic template support
 - Max restrictions on `To`, `CC` and `BCC`
+- Secrets are redacted when the configuration is logged or marshaled to JSON
+- `BCC` recipients are never written into the message headers, and header values cannot inject new headers
 
 <details>
 <summary><strong><code>Supported Service Providers</code></strong></summary>
 <br/>
 
-- [AWS SES](https://docs.aws.amazon.com/ses/)
-- [Mandrill](https://mandrillapp.com/api/docs/)
-- [Postmark](https://postmarkapp.com/developer)
+- [AWS SES](https://docs.aws.amazon.com/ses/) _(tags & metadata become message tags; tracking via a configuration set)_
+- [Mandrill](https://mandrillapp.com/api/docs/) _(recipients are not preserved: each `To` recipient only sees their own address)_
+- [Postmark](https://postmarkapp.com/developer) _(one tag per email: multiple tags are joined with a comma)_
 - [Resend](https://resend.com/docs) _(open & click tracking configured per domain)_
 - [SendGrid](https://docs.sendgrid.com/) _(native open & click tracking)_
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
+
+| Feature                   | AWS SES | Mandrill | Postmark | Resend | SendGrid | SMTP |
+|---------------------------|:-------:|:--------:|:--------:|:------:|:--------:|:----:|
+| Tags                      |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
+| Metadata                  |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
+| Open / click tracking     |         |    ✓     |    ✓     |        |    ✓     |      |
+| Scheduled send (`SendAt`) |         |    ✓     |          |   ✓    |    ✓     |      |
+| Idempotency key           |         |          |          |   ✓    |          |      |
+| Auto text                 |         |    ✓     |          |   ✓    |          |      |
+| View content link         |         |    ✓     |          |        |          |      |
+
+When an email uses a feature its provider does not support, go-mail logs a
+warning (or returns `ErrUnsupportedFeature` when `StrictFeatures` is set). An
+unsupported `SendAt` is always an error, so a scheduled email is never sent early.
+</details>
+
+<details>
+<summary><strong><code>Sending, Failover & Results</code></strong></summary>
+<br/>
+
+```go
+// Send returns the provider that accepted the email and its message id
+result, err := mail.Send(ctx, email, gomail.Postmark, gomail.SendGrid) // tries Postmark, then SendGrid
+if err != nil {
+    return err
+}
+log.Printf("sent via %s: %s", result.Provider, result.MessageID)
+
+// SendEmail is still available when only the error matters
+err = mail.SendEmail(ctx, email, gomail.SMTP)
+```
+
+Every send is bounded by `SendTimeout` (default one minute) and honors the
+context. Attachments added with a reader are buffered on the first send, so the
+same email can be retried or failed over.
+</details>
+
+<details>
+<summary><strong><code>Provider-Specific Features</code></strong></summary>
+<br/>
+
+Each provider has a typed option that edits its native request right before it
+is sent, so anything the provider SDK supports is available. Options for other
+providers are ignored.
+
+```go
+email.With(
+    gomail.PostmarkOption(func(e *postmark.Email) { e.MessageStream = "broadcast" }),
+    gomail.SendGridOption(func(m *mail.SGMailV3) { m.SetTemplateID("d-123") }),
+    gomail.ResendOption(func(r *resend.SendEmailRequest) { r.TopicId = "topic_123" }),
+    gomail.MandrillOption(func(m *gochimp.Message) { m.Subaccount = "tenant-1" }),
+    gomail.SESOption(func(in *ses.SendRawEmailInput) { in.FromArn = aws.String(arn) }),
+)
+```
+</details>
+
+<details>
+<summary><strong><code>Custom Providers & Clients</code></strong></summary>
+<br/>
+
+Register any `Provider` (a new service, a built-in provider with your own
+client, or a fake in tests). A registered provider is kept by `StartUp`.
+
+```go
+// A custom provider
+const Mailgun gomail.ServiceProvider = 100
+err := mail.RegisterProvider(Mailgun, myMailgunProvider)
+
+// A built-in provider with a custom client (ie: SendGrid EU data residency)
+client := sendgrid.NewSendClient(apiKey)
+client.Request, _ = sendgrid.SetDataResidency(client.Request, "eu")
+err = mail.RegisterProvider(gomail.SendGrid, gomail.NewSendGridProvider(client))
+
+// A fake provider in your tests
+err = mail.RegisterProvider(gomail.SMTP, fakeProvider)
+```
+</details>
+
+<details>
+<summary><strong><code>Templates</code></strong></summary>
+<br/>
+
+```go
+htmlTemplate, _ := email.ParseHTMLTemplate("welcome.html") // {{.Styles}} is replaced with email.CSS, which is inlined
+textTemplate, _ := email.ParseTextTemplate("welcome.txt")  // text/template: no HTML escaping
+err := email.ApplyTemplates(htmlTemplate, textTemplate, data)
+```
+</details>
+
+<details>
+<summary><strong><code>Configuration</code></strong></summary>
+<br/>
+
+A provider is loaded by `StartUp` for every service whose credentials are set.
+
+| Field                                                         | Description                                                                                  |
+|---------------------------------------------------------------|----------------------------------------------------------------------------------------------|
+| `FromName`, `FromUsername`, `FromDomain`                      | Default sender (`FromUsername` and `FromDomain` are required)                                |
+| `AwsSesAccessID`, `AwsSesSecretKey`                           | AWS SES static credentials                                                                   |
+| `AwsSesUseIAMRole`                                            | Load AWS SES from the default credential chain instead of static keys                       |
+| `AwsSesRegion`, `AwsSesEndpoint`, `AwsSesConfigurationSet`    | AWS SES region (default `us-east-1`), custom endpoint, and configuration set                 |
+| `MandrillAPIKey`, `PostmarkServerToken`                       | Mandrill and Postmark credentials                                                            |
+| `ResendAPIKey`, `SendGridAPIKey`                              | Resend and SendGrid credentials                                                              |
+| `SMTPHost`, `SMTPPort`, `SMTPUsername`, `SMTPPassword`        | SMTP server (port defaults to `587`; leave the username empty for a relay without auth)      |
+| `SMTPImplicitTLS`                                             | Connect with TLS from the start (always on for port `465`)                                   |
+| `AutoText`, `Important`, `TrackClicks`, `TrackOpens`          | Defaults copied to every email created by `NewEmail`                                         |
+| `EmailCSS`                                                    | Default CSS copied to every email (used by `ParseHTMLTemplate`)                              |
+| `MaxToRecipients`, `MaxCcRecipients`, `MaxBccRecipients`      | Recipient limits (default `50` each)                                                         |
+| `MaxAttachmentSize`                                           | Total attachment bytes per email (default 40 MiB, negative for no limit)                     |
+| `SendTimeout`                                                 | Maximum time for one provider send (default one minute, negative for no timeout)            |
+| `StrictFeatures`                                              | Return `ErrUnsupportedFeature` instead of logging a warning for unsupported features          |
+| `Logger`                                                      | `*slog.Logger` for warnings (default `slog.Default()`)                                       |
+</details>
+
+<details>
+<summary><strong><code>SMTP</code></strong></summary>
+<br/>
+
+- Every send opens a new connection that honors the context deadline and cancellation
+- STARTTLS is used whenever the server offers it; set `SMTPImplicitTLS` (or port `465`) for SMTPS
+- Server certificates are verified; credentials are never sent over an unencrypted connection (except to localhost)
+- `PLAIN` authentication is used, with `LOGIN` as a fallback for servers that only offer `LOGIN` (ie: Microsoft 365)
+- Use `NewSMTPProvider` with `RegisterProvider` for a custom `tls.Config` or EHLO name
 </details>
 
 <details>
@@ -204,7 +375,7 @@ This command ensures all dependencies are brought up to date in a single step, i
 <br/>
 
 ## Examples & Tests
-All unit tests and fuzz tests run via [GitHub Actions](https://github.com/mrz1836/go-pre-commit/actions) and use [Go version 1.26.x](https://go.dev/doc/go1.26). View the [configuration file](.github/workflows/fortress.yml).
+All unit tests and fuzz tests run via [GitHub Actions](https://github.com/mrz1836/go-mail/actions) and use [Go version 1.26.x](https://go.dev/doc/go1.26). View the [configuration file](.github/workflows/fortress.yml).
 
 Run all tests (fast):
 
@@ -215,6 +386,11 @@ magex test
 Run all tests with race detector (slower):
 ```bash script
 magex test:race
+```
+
+Run the fuzz tests:
+```bash script
+magex test:fuzz
 ```
 
 <br/>

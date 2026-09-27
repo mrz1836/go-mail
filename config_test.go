@@ -1,8 +1,15 @@
 package gomail
 
 import (
+	"encoding/json"
+	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
+	"github.com/mattbaird/gochimp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -11,7 +18,6 @@ import (
 func TestContainsServiceProvider(t *testing.T) {
 	t.Parallel()
 
-	// Create the list of tests
 	tests := []struct {
 		name      string
 		providers []ServiceProvider
@@ -20,17 +26,13 @@ func TestContainsServiceProvider(t *testing.T) {
 	}{
 		{"provider found in single provider list", []ServiceProvider{AwsSes}, AwsSes, true},
 		{"provider found in multiple provider list", []ServiceProvider{Mandrill, AwsSes, SMTP, Postmark}, AwsSes, true},
-		{"provider found in two provider list", []ServiceProvider{Mandrill, AwsSes}, AwsSes, true},
 		{"provider not found in different provider list", []ServiceProvider{Mandrill}, AwsSes, false},
-		{"provider not found in single different provider", []ServiceProvider{SMTP}, AwsSes, false},
 		{"provider not found in empty list", []ServiceProvider{}, AwsSes, false},
 	}
 
-	// Loop tests
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			found := containsServiceProvider(test.providers, test.provider)
-			assert.Equal(t, test.expected, found)
+			assert.Equal(t, test.expected, containsServiceProvider(test.providers, test.provider))
 		})
 	}
 }
@@ -39,7 +41,6 @@ func TestContainsServiceProvider(t *testing.T) {
 func TestServiceProvider_String(t *testing.T) {
 	t.Parallel()
 
-	// Create the list of tests
 	tests := []struct {
 		name     string
 		provider ServiceProvider
@@ -54,7 +55,6 @@ func TestServiceProvider_String(t *testing.T) {
 		{"unknown provider", ServiceProvider(999), "Unknown"},
 	}
 
-	// Loop tests
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			assert.Equal(t, test.expected, test.provider.String())
@@ -68,29 +68,23 @@ func TestMailService_StartUpRecipientCaps(t *testing.T) {
 	t.Parallel()
 
 	t.Run("defaults applied when caps are unset", func(t *testing.T) {
-		service := new(MailService)
-		service.FromUsername = testUsernameEmail
-		service.FromDomain = testDomainEmail
-		service.MandrillAPIKey = "1234567"
-
-		err := service.StartUp()
-		require.NoError(t, err)
+		service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, MandrillAPIKey: "1234567"}
+		require.NoError(t, service.StartUp())
 		assert.Equal(t, maxToRecipients, service.MaxToRecipients)
 		assert.Equal(t, maxCcRecipients, service.MaxCcRecipients)
 		assert.Equal(t, maxBccRecipients, service.MaxBccRecipients)
 	})
 
 	t.Run("configured caps are preserved", func(t *testing.T) {
-		service := new(MailService)
-		service.FromUsername = testUsernameEmail
-		service.FromDomain = testDomainEmail
-		service.MandrillAPIKey = "1234567"
-		service.MaxToRecipients = 10
-		service.MaxCcRecipients = 20
-		service.MaxBccRecipients = 30
-
-		err := service.StartUp()
-		require.NoError(t, err)
+		service := &MailService{
+			FromDomain:       testDomainEmail,
+			FromUsername:     testUsernameEmail,
+			MandrillAPIKey:   "1234567",
+			MaxBccRecipients: 30,
+			MaxCcRecipients:  20,
+			MaxToRecipients:  10,
+		}
+		require.NoError(t, service.StartUp())
 		assert.Equal(t, 10, service.MaxToRecipients)
 		assert.Equal(t, 20, service.MaxCcRecipients)
 		assert.Equal(t, 30, service.MaxBccRecipients)
@@ -102,78 +96,86 @@ func TestMailService_StartUp(t *testing.T) {
 	t.Parallel()
 
 	service := new(MailService)
-	err := service.StartUp()
+	require.ErrorIs(t, service.StartUp(), ErrMissingFromUsername)
 
-	// No username
-	require.Error(t, err)
-	assert.Equal(t, "missing required field: from_username", err.Error())
-
-	// No domain
 	service.FromUsername = "someone"
-	err = service.StartUp()
-	require.Error(t, err)
-	assert.Equal(t, "missing required field: from_domain", err.Error())
+	require.ErrorIs(t, service.StartUp(), ErrMissingFromDomain)
 
-	// No providers
-	service.FromDomain = "example.com"
-	err = service.StartUp()
-	require.Error(t, err)
-	assert.Equal(t, "attempted to startup the email service provider(s) however there's no available service provider", err.Error())
+	service.FromDomain = testDomainEmail
+	require.ErrorIs(t, service.StartUp(), ErrNoServiceProvider)
 
-	// Add Mandrill api key
+	// Every provider loads from its credentials
 	service.MandrillAPIKey = "1234567"
-	err = service.StartUp()
-	require.NoError(t, err)
-
-	// Add AWS credentials
 	service.AwsSesAccessID = "1234567"
 	service.AwsSesSecretKey = "1234567"
-	service.AwsSesEndpoint = awsSesDefaultEndpoint
-	service.AwsSesRegion = awsSesDefaultRegion
-	err = service.StartUp()
-	require.NoError(t, err)
-
-	// Add postmark credentials
+	service.AwsSesEndpoint = "https://email.us-east-1.amazonaws.com"
+	service.AwsSesConfigurationSet = "tracking"
 	service.PostmarkServerToken = "1234567"
-	err = service.StartUp()
-	require.NoError(t, err)
-
-	// Add SMTP
-	service.SMTPHost = "example.com"
+	service.SMTPHost = "smtp.example.com"
 	service.SMTPPassword = "fake-password"
 	service.SMTPUsername = "fake-username"
-	service.SMTPPort = 25
-	err = service.StartUp()
-	require.NoError(t, err)
-
-	// Add SendGrid
+	service.SMTPPort = 465
 	service.SendGridAPIKey = "1234567"
-	err = service.StartUp()
-	require.NoError(t, err)
-	assert.True(t, containsServiceProvider(service.AvailableProviders, SendGrid),
-		"SendGrid should load when the api key is set")
-
-	// Add Resend
 	service.ResendAPIKey = "re_1234567"
-	err = service.StartUp()
-	require.NoError(t, err)
-	assert.True(t, containsServiceProvider(service.AvailableProviders, Resend),
-		"Resend should load when the api key is set")
+	require.NoError(t, service.StartUp())
+	assert.Equal(t, []ServiceProvider{Mandrill, AwsSes, Postmark, SMTP, SendGrid, Resend}, service.AvailableProviders)
+
+	assert.IsType(t, &MandrillProvider{}, service.providers[Mandrill])
+	assert.IsType(t, &PostmarkProvider{}, service.providers[Postmark])
+	assert.IsType(t, &SendGridProvider{}, service.providers[SendGrid])
+	assert.IsType(t, &ResendProvider{}, service.providers[Resend])
+
+	sesProvider, ok := service.providers[AwsSes].(*SESProvider)
+	require.True(t, ok)
+	assert.Equal(t, "tracking", sesProvider.configurationSet)
+
+	smtpProvider, ok := service.providers[SMTP].(*SMTPProvider)
+	require.True(t, ok)
+	assert.Equal(t, SMTPConfig{
+		Host:        "smtp.example.com",
+		ImplicitTLS: true,
+		LocalName:   smtpDefaultLocalName,
+		Password:    "fake-password",
+		Port:        465,
+		Username:    "fake-username",
+	}, smtpProvider.config)
 }
 
-// TestMailService_StartUpResendOnly tests that Resend alone is enough to start the service
-func TestMailService_StartUpResendOnly(t *testing.T) {
+// TestMailService_StartUpIdempotent checks StartUp can run again without duplicates
+func TestMailService_StartUpIdempotent(t *testing.T) {
 	t.Parallel()
 
-	service := new(MailService)
-	service.FromUsername = testUsernameEmail
-	service.FromDomain = testDomainEmail
-	service.ResendAPIKey = "re_1234567"
+	service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, MandrillAPIKey: "key", ResendAPIKey: "re_key"}
+	require.NoError(t, service.StartUp())
+	first := service.providers[Mandrill]
 
-	err := service.StartUp()
-	require.NoError(t, err)
-	assert.Equal(t, []ServiceProvider{Resend}, service.AvailableProviders)
-	assert.NotNil(t, service.resendService)
+	require.NoError(t, service.StartUp())
+	assert.Equal(t, []ServiceProvider{Mandrill, Resend}, service.AvailableProviders)
+	assert.Same(t, first, service.providers[Mandrill], "an existing provider is kept")
+}
+
+// TestMailService_StartUpKeepsRegisteredProvider checks a registered provider is not replaced
+func TestMailService_StartUpKeepsRegisteredProvider(t *testing.T) {
+	t.Parallel()
+
+	fake := &fakeProvider{}
+	service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, SendGridAPIKey: "key"}
+	require.NoError(t, service.RegisterProvider(SendGrid, fake))
+	require.NoError(t, service.StartUp())
+
+	assert.Same(t, fake, service.providers[SendGrid])
+	assert.Equal(t, []ServiceProvider{SendGrid}, service.AvailableProviders)
+}
+
+// TestMailService_StartUpCustomProviderOnly checks a registered custom provider is enough to start
+func TestMailService_StartUpCustomProviderOnly(t *testing.T) {
+	t.Parallel()
+
+	const mailgun ServiceProvider = 100
+	service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail}
+	require.NoError(t, service.RegisterProvider(mailgun, &fakeProvider{}))
+	require.NoError(t, service.StartUp())
+	assert.Equal(t, []ServiceProvider{mailgun}, service.AvailableProviders)
 }
 
 // TestMailService_StartUpAwsSesIAMRole tests that the AWS SES provider loads via
@@ -182,23 +184,200 @@ func TestMailService_StartUpResendOnly(t *testing.T) {
 func TestMailService_StartUpAwsSesIAMRole(t *testing.T) {
 	t.Parallel()
 
+	service := &MailService{
+		AwsSesRegion:     awsSesDefaultRegion,
+		AwsSesUseIAMRole: true,
+		FromDomain:       testDomainEmail,
+		FromUsername:     testUsernameEmail,
+	}
+	require.NoError(t, service.StartUp())
+	assert.True(t, containsServiceProvider(service.AvailableProviders, AwsSes))
+
+	// Static keys remain optional: with neither keys nor the flag, SES is skipped
+	other := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail}
+	require.ErrorIs(t, other.StartUp(), ErrNoServiceProvider)
+	assert.False(t, containsServiceProvider(other.AvailableProviders, AwsSes))
+}
+
+// TestMailService_StartUpMandrillTimeout checks the Mandrill client timeout follows SendTimeout
+func TestMailService_StartUpMandrillTimeout(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		timeout  time.Duration
+		expected time.Duration
+	}{
+		{"default", 0, defaultSendTimeout},
+		{"configured", 5 * time.Second, 5 * time.Second},
+		{"disabled", -1, 0},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, MandrillAPIKey: "key", SendTimeout: test.timeout}
+			require.NoError(t, service.StartUp())
+
+			provider, ok := service.providers[Mandrill].(*MandrillProvider)
+			require.True(t, ok)
+			api, ok := provider.client.(*gochimp.MandrillAPI)
+			require.True(t, ok)
+			assert.Equal(t, test.expected, api.Timeout)
+		})
+	}
+}
+
+// TestMailService_RegisterProvider checks provider registration
+func TestMailService_RegisterProvider(t *testing.T) {
+	t.Parallel()
+
 	service := new(MailService)
-	service.FromUsername = "no-reply"
-	service.FromDomain = "example.com"
-	service.AwsSesRegion = awsSesDefaultRegion
-	service.AwsSesUseIAMRole = true
+	require.ErrorIs(t, service.RegisterProvider(SMTP, nil), ErrNilProvider)
+	assert.Empty(t, service.AvailableProviders)
 
-	err := service.StartUp()
+	first, second := &fakeProvider{}, &fakeProvider{}
+	require.NoError(t, service.RegisterProvider(SMTP, first))
+	require.NoError(t, service.RegisterProvider(SMTP, second))
+	assert.Equal(t, []ServiceProvider{SMTP}, service.AvailableProviders)
+	assert.Same(t, second, service.providers[SMTP], "registering again replaces the provider")
+}
+
+// TestMailService_Defaults checks the timeout, size limit and logger defaults
+func TestMailService_Defaults(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name            string
+		timeout         time.Duration
+		size            int64
+		expectedTimeout time.Duration
+		expectedSize    int64
+	}{
+		{"defaults", 0, 0, defaultSendTimeout, defaultMaxAttachmentSize},
+		{"disabled", -1, -1, 0, 0},
+		{"configured", time.Second, 10, time.Second, 10},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := &MailService{SendTimeout: test.timeout, MaxAttachmentSize: test.size}
+			assert.Equal(t, test.expectedTimeout, service.sendTimeout())
+			assert.Equal(t, test.expectedSize, service.maxAttachmentSize())
+		})
+	}
+
+	t.Run("logger", func(t *testing.T) {
+		assert.Same(t, slog.Default(), new(MailService).logger())
+		custom := slog.New(slog.DiscardHandler)
+		assert.Same(t, custom, (&MailService{Logger: custom}).logger())
+	})
+}
+
+// newSecretService returns a service with every secret set
+func newSecretService() MailService {
+	return MailService{
+		AwsSesAccessID:      "AKIAEXAMPLE",
+		AwsSesSecretKey:     "aws-secret",
+		FromDomain:          testDomainEmail,
+		MandrillAPIKey:      "mandrill-secret",
+		PostmarkServerToken: "postmark-secret",
+		ResendAPIKey:        "resend-secret",
+		SMTPPassword:        "smtp-secret",
+		SendGridAPIKey:      "sendgrid-secret",
+	}
+}
+
+// secretValues are the secrets set by newSecretService
+func secretValues() []string {
+	return []string{"aws-secret", "mandrill-secret", "postmark-secret", "resend-secret", "smtp-secret", "sendgrid-secret"}
+}
+
+// TestMailService_RedactsSecrets checks secrets never appear in JSON or fmt output
+func TestMailService_RedactsSecrets(t *testing.T) {
+	t.Parallel()
+
+	service := newSecretService()
+	require.NoError(t, service.RegisterProvider(Postmark, &fakeProvider{}))
+
+	valueJSON, err := json.Marshal(service)
 	require.NoError(t, err)
-	assert.True(t, containsServiceProvider(service.AvailableProviders, AwsSes),
-		"AWS SES should load via the default credential chain without static keys")
+	pointerJSON, err := json.Marshal(&service)
+	require.NoError(t, err)
 
-	// Static keys remain optional: with neither keys nor the flag, SES is skipped.
-	other := new(MailService)
-	other.FromUsername = "no-reply"
-	other.FromDomain = "example.com"
-	err = other.StartUp()
+	outputs := map[string]string{
+		"json value":   string(valueJSON),
+		"json pointer": string(pointerJSON),
+		"%v value":     fmt.Sprintf("%v", service),
+		"%+v pointer":  fmt.Sprintf("%+v", &service),
+		"%#v value":    fmt.Sprintf("%#v", service),
+		"sprint":       fmt.Sprint(&service),
+	}
+	for name, output := range outputs {
+		t.Run(name, func(t *testing.T) {
+			for _, secret := range secretValues() {
+				assert.NotContains(t, output, secret)
+			}
+			assert.Contains(t, output, redactedValue)
+			assert.Contains(t, output, "AKIAEXAMPLE", "non-secret fields are kept")
+		})
+	}
+
+	t.Run("json keeps the fields", func(t *testing.T) {
+		var decoded map[string]any
+		require.NoError(t, json.Unmarshal(valueJSON, &decoded))
+		assert.Equal(t, redactedValue, decoded["sendgrid_api_key"])
+		assert.Equal(t, testDomainEmail, decoded["from_domain"])
+		assert.NotContains(t, decoded, "Logger")
+	})
+
+	t.Run("original is unchanged", func(t *testing.T) {
+		assert.Equal(t, "sendgrid-secret", service.SendGridAPIKey)
+	})
+
+	t.Run("empty secrets stay empty", func(t *testing.T) {
+		output, marshalErr := json.Marshal(MailService{})
+		require.NoError(t, marshalErr)
+		assert.NotContains(t, string(output), redactedValue)
+	})
+
+	t.Run("unmarshal still reads secrets", func(t *testing.T) {
+		var loaded MailService
+		require.NoError(t, json.Unmarshal([]byte(`{"sendgrid_api_key":"from-config"}`), &loaded))
+		assert.Equal(t, "from-config", loaded.SendGridAPIKey)
+	})
+}
+
+// TestMailService_LoadAwsSesClientEndpoint checks the custom SES endpoint
+func TestMailService_LoadAwsSesClientEndpoint(t *testing.T) {
+	t.Parallel()
+
+	service := &MailService{AwsSesAccessID: "id", AwsSesSecretKey: "secret", AwsSesEndpoint: "http://localhost:4566"}
+	client, err := service.loadAwsSesClient(true)
+	require.NoError(t, err)
+	require.NotNil(t, client.Options().BaseEndpoint)
+	assert.Equal(t, "http://localhost:4566", *client.Options().BaseEndpoint)
+	assert.Equal(t, awsSesDefaultRegion, client.Options().Region)
+
+	// The endpoint is copied, so later config changes do not affect the client
+	service.AwsSesEndpoint = "changed"
+	assert.Equal(t, "http://localhost:4566", *client.Options().BaseEndpoint)
+}
+
+// TestMailService_StartUpAwsSesConfigError checks an AWS config failure is returned
+func TestMailService_StartUpAwsSesConfigError(t *testing.T) {
+	configFile := filepath.Join(t.TempDir(), "config")
+	require.NoError(t, os.WriteFile(configFile, []byte("[default]\nregion = us-east-1\n"), 0o600))
+	t.Setenv("AWS_CONFIG_FILE", configFile)
+	t.Setenv("AWS_PROFILE", "go-mail-missing-profile")
+
+	service := &MailService{
+		AwsSesUseIAMRole: true,
+		FromDomain:       testDomainEmail,
+		FromUsername:     testUsernameEmail,
+		MandrillAPIKey:   "key",
+	}
+	err := service.StartUp()
 	require.Error(t, err)
-	assert.False(t, containsServiceProvider(other.AvailableProviders, AwsSes),
-		"AWS SES is not loaded without credentials or the IAM-role option")
+	assert.Contains(t, err.Error(), "failed to load AWS config")
+	assert.False(t, service.hasProvider(AwsSes))
 }

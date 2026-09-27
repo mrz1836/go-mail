@@ -9,6 +9,9 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/mrz1836/postmark"
+	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
+
 	gomail "github.com/mrz1836/go-mail"
 )
 
@@ -36,6 +39,9 @@ func main() {
 
 	// Example using ALL options available
 	// allOptionsExample()
+
+	// Example using provider-specific features, failover and the send result
+	// advancedExample()
 }
 
 // awsSesExample shows an example using AWS SES as the provider
@@ -243,12 +249,8 @@ func smtpExample() { //nolint:unused // this is an example function
 	if len(mail.SMTPHost) == 0 {
 		log.Fatal("missing env: EMAIL_SMTP_HOST")
 	}
-	if len(mail.SMTPUsername) == 0 {
-		log.Fatal("missing env: EMAIL_SMTP_USERNAME")
-	}
-	if mail.SMTPPort == 0 {
-		log.Fatal("missing env: EMAIL_SMTP_PORT")
-	}
+	// The port defaults to 587 (STARTTLS); use 465 for implicit TLS. Leave the
+	// username empty for a relay that does not require authentication.
 	provider := gomail.SMTP
 
 	// Start the service
@@ -440,4 +442,50 @@ func allOptionsExample() { //nolint:unused // this is an example function
 
 	// Congrats!
 	log.Printf("all emails sent!")
+}
+
+// advancedExample shows provider-specific options, failover, and the send result
+func advancedExample() { //nolint:unused // this is an example function
+
+	// Config: two providers so one can fail over to the other
+	mail := new(gomail.MailService)
+	mail.FromName = "Acme, Inc."
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN")
+	mail.SendGridAPIKey = os.Getenv("EMAIL_SENDGRID_API_KEY")
+	mail.StrictFeatures = false // true returns ErrUnsupportedFeature instead of logging a warning
+
+	// Start the service
+	if err := mail.StartUp(); err != nil {
+		log.Fatalf("error in StartUp: %s", err.Error())
+	}
+
+	// Create the email; recipients may include a display name
+	email := mail.NewEmail()
+	email.Subject = "Your weekly digest"
+	email.HTMLContent = `<html><body><img src="cid:logo"> Here is your digest</body></html>`
+	email.PlainTextContent = "Here is your digest"
+	email.Recipients = []string{"Jane Doe <" + os.Getenv("EMAIL_TEST_TO_RECIPIENT") + ">"}
+	email.Tags = []string{"digest"}
+	email.Metadata = map[string]string{"user_id": "42"} // returned in provider webhooks
+	email.AddInlineAttachment("logo.png", "image/png", "logo", []byte("...png bytes..."))
+
+	// Gmail and Yahoo require one-click unsubscribe for bulk senders
+	if err := email.SetListUnsubscribe(true, "https://example.com/unsubscribe?u=42"); err != nil {
+		log.Fatalf("error in SetListUnsubscribe: %s", err.Error())
+	}
+
+	// Provider-specific features: each option only applies to its own provider
+	email.With(
+		gomail.PostmarkOption(func(e *postmark.Email) { e.MessageStream = "broadcast" }),
+		gomail.SendGridOption(func(m *sgmail.SGMailV3) { m.SetASM(sgmail.NewASM().SetGroupID(123)) }),
+	)
+
+	// Try Postmark first and fail over to SendGrid
+	result, err := mail.Send(context.Background(), email, gomail.Postmark, gomail.SendGrid)
+	if err != nil {
+		log.Fatalf("error in Send: %s", err.Error())
+	}
+	log.Printf("email sent via %s with message id: %s", result.Provider, result.MessageID)
 }

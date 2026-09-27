@@ -1,121 +1,99 @@
 package gomail
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"html/template"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
+	texttemplate "text/template"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// errReader is an io.Reader that always fails, used to exercise read-error paths
-type errReader struct{}
-
-// Read always returns an error
-func (errReader) Read(_ []byte) (int, error) {
-	return 0, ErrBadHostname
-}
-
-// TestEncodeAttachmentBase64 tests the encodeAttachmentBase64() helper
-func TestEncodeAttachmentBase64(t *testing.T) {
-	t.Parallel()
-
-	t.Run("encodes reader contents", func(t *testing.T) {
-		encoded, err := encodeAttachmentBase64(strings.NewReader("hello"))
-		require.NoError(t, err)
-		assert.Equal(t, "aGVsbG8=", encoded) // base64 of "hello"
-	})
-
-	t.Run("returns error from a failing reader", func(t *testing.T) {
-		_, err := encodeAttachmentBase64(errReader{})
-		require.ErrorIs(t, err, ErrBadHostname)
-	})
-}
+// errProviderDown is a test-only provider failure
+var errProviderDown = errors.New("provider is down")
 
 // TestMailService_NewEmail tests the method NewEmail()
 func TestMailService_NewEmail(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
+	service := new(MailService)
+	service.AutoText = true
+	service.EmailCSS = []byte("body{}")
+	service.FromUsername = testUsernameEmail
+	service.FromName = testFromNameEmail
+	service.FromDomain = testDomainEmail
+	service.Important = true
+	service.TrackClicks = true
+	service.TrackOpens = true
 
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	email := mail.NewEmail()
-
-	assert.Equal(t, mail.FromUsername+"@"+mail.FromDomain, email.FromAddress)
-
+	email := service.NewEmail()
+	assert.Equal(t, service.FromUsername+"@"+service.FromDomain, email.FromAddress)
 	assert.Equal(t, email.FromAddress, email.ReplyToAddress)
-
+	assert.Equal(t, service.FromName, email.FromName)
+	assert.Equal(t, service.EmailCSS, email.CSS)
 	assert.True(t, email.AutoText)
-
 	assert.True(t, email.Important)
-
-	assert.Equal(t, mail.FromName, email.FromName)
+	assert.True(t, email.TrackClicks)
+	assert.True(t, email.TrackOpens)
 }
 
 // ExampleMailService_NewEmail example using the NewEmail()
 func ExampleMailService_NewEmail() {
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
+	service := new(MailService)
+	service.FromUsername = testUsernameEmail
+	service.FromName = testFromNameEmail
+	service.FromDomain = testDomainEmail
 
-	email := mail.NewEmail()
+	email := service.NewEmail()
 	fmt.Printf("new email with from address: %s", email.FromAddress)
 	// output: new email with from address: no-reply@example.com
 }
 
 // BenchmarkMailService_NewEmail runs benchmark on NewEmail()
 func BenchmarkMailService_NewEmail(b *testing.B) {
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
+	service := new(MailService)
+	service.FromUsername = testUsernameEmail
+	service.FromName = testFromNameEmail
+	service.FromDomain = testDomainEmail
 	for b.Loop() {
-		_ = mail.NewEmail()
+		_ = service.NewEmail()
 	}
 }
 
-// TestEmail_AddAttachment tests the method AddAttachment()
+// TestEmail_AddAttachment tests the attachment helpers
 func TestEmail_AddAttachment(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
+	email := &Email{}
+	reader := strings.NewReader("data")
+	email.AddAttachment("reader.txt", "text/plain", reader)
+	email.AddAttachmentBytes("bytes.pdf", "application/pdf", []byte("%PDF"))
+	email.AddInlineAttachment("logo.png", "image/png", "logo", []byte("png"))
 
-	email := mail.NewEmail()
-	email.AddAttachment("testName", "testType", nil)
-	email.AddAttachment("testName2", "testType2", nil)
-
-	assert.Len(t, email.Attachments, 2)
-
-	assert.Equal(t, "testName", email.Attachments[0].FileName)
-	assert.Equal(t, "testType", email.Attachments[0].FileType)
-
-	assert.Equal(t, "testName2", email.Attachments[1].FileName)
-	assert.Equal(t, "testType2", email.Attachments[1].FileType)
+	require.Len(t, email.Attachments, 3)
+	assert.Equal(t, Attachment{FileName: "reader.txt", FileType: "text/plain", FileReader: reader}, email.Attachments[0])
+	assert.Equal(t, Attachment{FileName: "bytes.pdf", FileType: "application/pdf", Content: []byte("%PDF")}, email.Attachments[1])
+	assert.Equal(t, Attachment{FileName: "logo.png", FileType: "image/png", Content: []byte("png"), ContentID: "logo"}, email.Attachments[2])
 }
 
 // ExampleEmail_AddAttachment example using the AddAttachment()
 func ExampleEmail_AddAttachment() {
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
+	service := new(MailService)
+	service.FromUsername = testUsernameEmail
+	service.FromName = testFromNameEmail
+	service.FromDomain = testDomainEmail
 
-	email := mail.NewEmail()
-	email.AddAttachment("testName", "testType", nil)
+	email := service.NewEmail()
+	email.AddAttachment("testName", "testType", strings.NewReader("contents"))
 
 	fmt.Printf("attachment: %s", email.Attachments[0].FileName)
 	// output: attachment: testName
@@ -123,377 +101,592 @@ func ExampleEmail_AddAttachment() {
 
 // BenchmarkEmail_AddAttachment runs benchmark on AddAttachment()
 func BenchmarkEmail_AddAttachment(b *testing.B) {
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	email := mail.NewEmail()
+	email := new(Email)
 	for b.Loop() {
 		email.AddAttachment("testName", "testType", nil)
 	}
+}
+
+// TestEmail_SetHeader checks headers are replaced case-insensitively
+func TestEmail_SetHeader(t *testing.T) {
+	t.Parallel()
+
+	email := &Email{}
+	email.SetHeader("X-Tag", "one")
+	email.SetHeader("x-tag", "two")
+	email.SetHeader("X-Other", "three")
+	assert.Equal(t, map[string]string{"x-tag": "two", "X-Other": "three"}, email.Headers)
+}
+
+// TestEmail_SetListUnsubscribe checks the List-Unsubscribe headers
+func TestEmail_SetListUnsubscribe(t *testing.T) {
+	t.Parallel()
+
+	t.Run("one-click", func(t *testing.T) {
+		email := &Email{}
+		require.NoError(t, email.SetListUnsubscribe(true, "https://example.com/u?id=1", "mailto:u@example.com?subject=unsubscribe"))
+		assert.Equal(t, map[string]string{
+			headerListUnsubscribe:     "<https://example.com/u?id=1>, <mailto:u@example.com?subject=unsubscribe>",
+			headerListUnsubscribePost: listUnsubscribeOneClick,
+		}, email.Headers)
+		require.NoError(t, validateHeaders(email.Headers))
+	})
+
+	t.Run("without one-click removes the post header", func(t *testing.T) {
+		email := &Email{}
+		require.NoError(t, email.SetListUnsubscribe(true, "https://example.com/u"))
+		require.NoError(t, email.SetListUnsubscribe(false, "mailto:u@example.com"))
+		assert.Equal(t, map[string]string{headerListUnsubscribe: "<mailto:u@example.com>"}, email.Headers)
+	})
+
+	tests := []struct {
+		name     string
+		oneClick bool
+		targets  []string
+	}{
+		{"no targets", false, nil},
+		{"unsupported scheme", false, []string{"ftp://example.com/u"}},
+		{"relative url", false, []string{"/unsubscribe"}},
+		{"angle bracket", false, []string{"https://example.com/<u>"}},
+		{"comma", false, []string{"https://example.com/a,b"}},
+		{"line break", false, []string{"https://example.com/u\r\nBcc: x"}},
+		{"invalid url", false, []string{"https://exa mple.com"}},
+		{"one-click needs https", true, []string{"mailto:u@example.com", "http://example.com/u"}},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			email := &Email{}
+			err := email.SetListUnsubscribe(test.oneClick, test.targets...)
+			require.ErrorIs(t, err, ErrInvalidListUnsubscribe)
+			assert.Empty(t, email.Headers)
+		})
+	}
+}
+
+// TestEmail_With checks provider options are appended
+func TestEmail_With(t *testing.T) {
+	t.Parallel()
+
+	email := &Email{}
+	first, second := PostmarkOption(nil), SendGridOption(nil)
+	assert.Same(t, email, email.With(first))
+	email.With(second)
+	assert.Len(t, email.ProviderOptions, 2)
 }
 
 // TestEmail_ParseTemplate tests the method ParseTemplate()
 func TestEmail_ParseTemplate(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
-
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	email := mail.NewEmail()
-
-	// Parse a text template into memory
+	email := &Email{}
 	parsedTemplate, err := email.ParseTemplate(filepath.Join("examples", "example_template.txt"))
 	require.NoError(t, err)
-	require.NotNil(t, parsedTemplate)
 	assert.Equal(t, "example_template.txt", parsedTemplate.Name())
 
-	// Parse - missing file
 	_, err = email.ParseTemplate(filepath.Join("examples", "missing_file.txt"))
 	require.Error(t, err)
 }
 
-// TestEmail_ParseHTMLTemplate tests the method ParseHTMLTemplate()
-func TestEmail_ParseHTMLTemplate(t *testing.T) {
+// TestEmail_ParseTextTemplate tests the method ParseTextTemplate()
+func TestEmail_ParseTextTemplate(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
-
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	email := mail.NewEmail()
-
-	// Parse an HTML template into memory
-	parsedTemplate, err := email.ParseHTMLTemplate(filepath.Join("examples", "example_template.html"))
+	email := &Email{}
+	parsedTemplate, err := email.ParseTextTemplate(filepath.Join("examples", "example_template.txt"))
 	require.NoError(t, err)
-	require.NotNil(t, parsedTemplate)
-	assert.Equal(t, "example_template.html", parsedTemplate.Name())
+	assert.Equal(t, "example_template.txt", parsedTemplate.Name())
 
-	// Parse an HTML template and process CSS styles
-	parsedTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
+	_, err = email.ParseTextTemplate(filepath.Join("examples", "missing_file.txt"))
+	require.Error(t, err)
+}
+
+// writeTemplateFile writes a template file into a temporary directory
+func writeTemplateFile(t *testing.T, name, content string) string {
+	t.Helper()
+
+	file := filepath.Join(t.TempDir(), name)
+	require.NoError(t, os.WriteFile(file, []byte(content), 0o600))
+	return file
+}
+
+// TestEmail_ApplyTemplatesPlainTextIsNotEscaped checks plain-text output is
+// never HTML-escaped, whichever template package parsed it
+func TestEmail_ApplyTemplatesPlainTextIsNotEscaped(t *testing.T) {
+	t.Parallel()
+
+	file := writeTemplateFile(t, "reset.txt", "Hi {{.Name}}, reset: {{.URL}} {{.Plus}}")
+	data := map[string]string{"Name": `O'Brien & "Co" <team>`, "URL": "https://x.io/r?a=1&b=2", "Plus": "a+b"}
+	expected := `Hi O'Brien & "Co" <team>, reset: https://x.io/r?a=1&b=2 a+b`
+
+	t.Run("text template", func(t *testing.T) {
+		email := &Email{}
+		textTemplate, err := email.ParseTextTemplate(file)
+		require.NoError(t, err)
+		require.NoError(t, email.ApplyTemplates(nil, textTemplate, data))
+		assert.Equal(t, expected, email.PlainTextContent)
+	})
+
+	t.Run("legacy html template", func(t *testing.T) {
+		email := &Email{}
+		htmlTemplate, err := email.ParseTemplate(file)
+		require.NoError(t, err)
+		require.NoError(t, email.ApplyTemplates(nil, htmlTemplate, data))
+		assert.Equal(t, expected, email.PlainTextContent)
+	})
+}
+
+// TestEmail_ApplyTemplates tests the method ApplyTemplates() with the examples
+func TestEmail_ApplyTemplates(t *testing.T) {
+	t.Parallel()
+
+	service := &MailService{FromDomain: testDomainEmail, FromName: testFromNameEmail, FromUsername: testUsernameEmail}
+	email := service.NewEmail()
+
+	textTemplate, err := email.ParseTextTemplate(filepath.Join("examples", "example_template.txt"))
 	require.NoError(t, err)
-	require.NotNil(t, parsedTemplate)
-	assert.Equal(t, "example_template_css.html", parsedTemplate.Name())
 
-	// Parse - missing file
+	email.CSS, err = os.ReadFile(filepath.Join("examples", "example_theme.css"))
+	require.NoError(t, err)
+
+	var htmlTemplate *template.Template
+	htmlTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
+	require.NoError(t, err)
+	assert.Equal(t, "example_template_css.html", htmlTemplate.Name())
+
+	// Apply the service data
+	require.NoError(t, email.ApplyTemplates(htmlTemplate, textTemplate, service))
+	assert.Contains(t, email.PlainTextContent, "Sending email from: "+testFromNameEmail)
+	assert.Contains(t, email.HTMLContent, `class="example-class" style="color: #045704; font-weight: bold;"`)
+	assert.NotContains(t, email.HTMLContent, "<style")
+
+	// Apply the email itself as data
+	require.NoError(t, email.ApplyTemplates(htmlTemplate, textTemplate, nil))
+
+	// Error from a missing template variable
+	require.Error(t, email.ApplyTemplates(htmlTemplate, textTemplate, "no data"))
+	require.Error(t, email.ApplyTemplates(nil, textTemplate, "no data"))
+}
+
+// TestEmail_ApplyTemplatesNilTemplates checks nil and typed-nil templates are skipped
+func TestEmail_ApplyTemplatesNilTemplates(t *testing.T) {
+	t.Parallel()
+
+	email := &Email{HTMLContent: "keep", PlainTextContent: "keep"}
+	var htmlNil *template.Template
+	var textNil *texttemplate.Template
+
+	require.NoError(t, email.ApplyTemplates(nil, nil, nil))
+	require.NoError(t, email.ApplyTemplates(htmlNil, htmlNil, nil))
+	require.NoError(t, email.ApplyTemplates(nil, textNil, nil))
+	assert.Equal(t, "keep", email.HTMLContent)
+	assert.Equal(t, "keep", email.PlainTextContent)
+}
+
+// TestEmail_ParseHTMLTemplateKeepsTemplateActions checks CSS inlining after
+// execution keeps loops inside tables and actions inside attributes intact
+func TestEmail_ParseHTMLTemplateKeepsTemplateActions(t *testing.T) {
+	t.Parallel()
+
+	file := writeTemplateFile(t, "table.html", `<html><head><style>{{.Styles}}</style></head><body>`+
+		`<table>{{range .Items}}<tr><td class="c">{{.}}</td></tr>{{end}}</table>`+
+		`<a href="{{.URL}}" {{if .Title}}title="{{.Title}}"{{end}}>go</a></body></html>`)
+
+	email := &Email{CSS: []byte(".c { color: red; }")}
+	htmlTemplate, err := email.ParseHTMLTemplate(file)
+	require.NoError(t, err)
+
+	data := map[string]any{"Items": []string{"first", "second"}, "URL": "https://x.io/?a=1&b=2", "Title": "Go"}
+	require.NoError(t, email.ApplyTemplates(htmlTemplate, nil, data))
+
+	assert.Contains(t, email.HTMLContent, `<td class="c" style="color: red;">first</td>`)
+	assert.Contains(t, email.HTMLContent, `<td class="c" style="color: red;">second</td>`)
+	assert.Contains(t, email.HTMLContent, `title="Go"`)
+	assert.Contains(t, email.HTMLContent, `href="https://x.io/?a=1&amp;b=2"`)
+}
+
+// TestEmail_ParseHTMLTemplateWithoutStyles checks templates without the
+// placeholder (or without CSS) are not inlined
+func TestEmail_ParseHTMLTemplateWithoutStyles(t *testing.T) {
+	t.Parallel()
+
+	email := &Email{}
+	htmlTemplate, err := email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
+	require.NoError(t, err)
+	assert.Nil(t, htmlTemplate.Lookup(inlineCSSTemplateName))
+
+	htmlTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template.html"))
+	require.NoError(t, err)
+	assert.Nil(t, htmlTemplate.Lookup(inlineCSSTemplateName))
+
 	_, err = email.ParseHTMLTemplate(filepath.Join("examples", "missing_file.html"))
 	require.Error(t, err)
 }
 
-// TestEmail_ApplyTemplates tests the method ApplyTemplates()
-func TestEmail_ApplyTemplates(t *testing.T) {
+// TestEmail_ParseHTMLTemplateErrors checks the parse error paths
+func TestEmail_ParseHTMLTemplateErrors(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
+	t.Run("invalid template", func(t *testing.T) {
+		file := writeTemplateFile(t, "broken.html", "<html><head><style>{{.Styles}}</style></head><body>{{.Broken}</body></html>")
+		email := &Email{CSS: []byte("body { color: red; }")}
+		parsed, err := email.ParseHTMLTemplate(file)
+		require.Error(t, err)
+		assert.Nil(t, parsed)
+	})
 
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	email := mail.NewEmail()
-
-	// Parse a text template into memory
-	parsedTemplate, err := email.ParseTemplate(filepath.Join("examples", "example_template.txt"))
-	require.NoError(t, err)
-	require.NotNil(t, parsedTemplate)
-	assert.Equal(t, "example_template.txt", parsedTemplate.Name())
-
-	// Set the css theme
-	email.CSS, err = os.ReadFile(filepath.Join("examples", "example_theme.css"))
-	require.NoError(t, err)
-
-	// Parse an HTML template and process CSS styles
-	var parsedHTMLTemplate *template.Template
-	parsedHTMLTemplate, err = email.ParseHTMLTemplate(filepath.Join("examples", "example_template_css.html"))
-	require.NoError(t, err)
-	require.NotNil(t, parsedHTMLTemplate)
-	assert.Equal(t, "example_template_css.html", parsedHTMLTemplate.Name())
-
-	// Apply the data to the template
-	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, mail)
-	require.NoError(t, err)
-
-	// Apply no data
-	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, nil)
-	require.NoError(t, err)
-
-	// Get error from missing template variable
-	err = email.ApplyTemplates(parsedHTMLTemplate, parsedTemplate, "no data")
-	require.Error(t, err)
+	t.Run("invalid css", func(t *testing.T) {
+		file := writeTemplateFile(t, "bad_css.html", "<html><head><style>{{.Styles}}</style></head><body></body></html>")
+		email := &Email{CSS: []byte("}")}
+		parsed, err := email.ParseHTMLTemplate(file)
+		require.Error(t, err)
+		assert.Nil(t, parsed)
+	})
 }
 
-// TestMailService_SendEmail tests the method SendEmail()
-func TestMailService_SendEmail(t *testing.T) {
+// TestEmail_ApplyTemplatesInlineError checks an inliner failure is returned
+func TestEmail_ApplyTemplatesInlineError(t *testing.T) {
 	t.Parallel()
 
-	mail := new(MailService)
-
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	// Use the AWS SES provider
-	mail.AwsSesAccessID = "1234567"
-	mail.AwsSesSecretKey = "1234567"
-
-	// Use the Postmark provider
-	mail.PostmarkServerToken = "1234567"
-
-	// Use the Mandrill provider
-	mail.MandrillAPIKey = "1234567"
-
-	// Use the SMTP provider
-	mail.SMTPPort = 25
-	mail.SMTPUsername = "fake"
-	mail.SMTPPassword = "fake"
-	mail.SMTPHost = testDomainEmail
-
-	// Use the SendGrid provider
-	mail.SendGridAPIKey = "1234567"
-
-	// Use the Resend provider
-	mail.ResendAPIKey = "re_1234567"
-
-	// Start the mail service
-	err := mail.StartUp()
-	require.NoError(t, err)
-
-	// Set mock interface(s)
-	mail.postmarkService = &mockPostmarkInterface{}
-	mail.mandrillService = &mockMandrillInterface{}
-	mail.smtpClientFactory = newMockSMTPClientFactory
-	mail.awsSesService = &mockAwsSesInterface{}
-	mail.sendGridService = &mockSendGridInterface{}
-	mail.resendService = &mockResendInterface{}
-
-	email := mail.NewEmail()
-	email.Subject = "Test subject"
-	email.PlainTextContent = "Test email content"
-	email.Recipients = append(email.Recipients, "someone@domain.com")
-
-	// Valid (Postmark)
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.NoError(t, err)
-
-	// Valid (AWS SES)
-	err = mail.SendEmail(context.Background(), email, AwsSes)
-	require.NoError(t, err)
-
-	// Valid (Mandrill)
-	err = mail.SendEmail(context.Background(), email, Mandrill)
-	require.NoError(t, err)
-
-	// Valid (SMTP)
-	err = mail.SendEmail(context.Background(), email, SMTP)
-	require.NoError(t, err)
-
-	// Valid (SendGrid)
-	err = mail.SendEmail(context.Background(), email, SendGrid)
-	require.NoError(t, err)
-
-	// Valid (Resend)
-	err = mail.SendEmail(context.Background(), email, Resend)
-	require.NoError(t, err)
-}
-
-// TestMailService_SendEmailInValid tests the method SendEmail()
-func TestMailService_SendEmailInValid(t *testing.T) {
-	t.Parallel()
-
-	mail := new(MailService)
-
-	mail.AutoText = true
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.Important = true
-
-	// Use the Postmark provider
-	mail.PostmarkServerToken = "1234567"
-
-	// Start the mail service
-	err := mail.StartUp()
-	require.NoError(t, err)
-
-	// Set mock interface(s)
-	mail.postmarkService = &mockPostmarkInterface{}
-
-	email := mail.NewEmail()
-
-	// Invalid provider
-	err = mail.SendEmail(context.Background(), email, 999)
-	require.Error(t, err)
-
-	// Invalid provider - not in available list
-	err = mail.SendEmail(context.Background(), email, AwsSes)
-	require.Error(t, err)
-
-	// Invalid provider - SendGrid not configured / available
-	err = mail.SendEmail(context.Background(), email, SendGrid)
-	require.ErrorIs(t, err, ErrProviderNotFound)
-
-	// Invalid provider - Resend not configured / available
-	err = mail.SendEmail(context.Background(), email, Resend)
-	require.ErrorIs(t, err, ErrProviderNotFound)
-
-	// Invalid - subject
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-	email.Subject = "Subject exits now"
-
-	// Invalid - plain text missing
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-	email.PlainTextContent = "Plain text exits now"
-
-	// Invalid - recipients missing
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-	email.Recipients = append(email.Recipients, "someone@domain.com")
-
-	// Too many TO recipients
-	for range maxToRecipients + 1 {
-		email.Recipients = append(email.Recipients, "someone@domain.com")
-	}
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-	email.Recipients = []string{"someone@domain.com"}
-
-	// Too many CC recipients
-	for range maxCcRecipients + 1 {
-		email.RecipientsCc = append(email.RecipientsCc, "someone@domain.com")
-	}
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-	email.RecipientsCc = []string{"someone@domain.com"}
-
-	// Too many BCC recipients
-	for range maxBccRecipients + 1 {
-		email.RecipientsBcc = append(email.RecipientsBcc, "someone@domain.com")
-	}
-	err = mail.SendEmail(context.Background(), email, Postmark)
-	require.Error(t, err)
-}
-
-// TestMailService_SendEmailProviderNotFoundMessage confirms the provider-not-found
-// error renders readable provider names (via ServiceProvider.String()) rather than
-// hex-encoded values
-func TestMailService_SendEmailProviderNotFoundMessage(t *testing.T) {
-	t.Parallel()
-
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-
-	// Only Postmark is available
-	mail.PostmarkServerToken = "1234567"
-	err := mail.StartUp()
-	require.NoError(t, err)
-	mail.postmarkService = &mockPostmarkInterface{}
-
-	email := mail.NewEmail()
-	email.Subject = "Test subject"
-	email.PlainTextContent = "Test email content"
-	email.Recipients = []string{"someone@domain.com"}
-
-	// Request an unavailable provider
-	err = mail.SendEmail(context.Background(), email, Mandrill)
-	require.ErrorIs(t, err, ErrProviderNotFound)
-	assert.Contains(t, err.Error(), "Mandrill")   // requested provider name
-	assert.Contains(t, err.Error(), "[Postmark]") // available providers slice
-}
-
-// TestMailService_SendEmailDefaultProvider exercises the switch default branch
-// (the exhaustive fallback / runtime safety net) by making an out-of-range
-// provider appear available so the availability check and validation pass
-func TestMailService_SendEmailDefaultProvider(t *testing.T) {
-	t.Parallel()
-
-	mail := new(MailService)
-	mail.FromUsername = testUsernameEmail
-	mail.FromName = testFromNameEmail
-	mail.FromDomain = testDomainEmail
-	mail.MaxToRecipients = maxToRecipients
-	mail.MaxCcRecipients = maxCcRecipients
-	mail.MaxBccRecipients = maxBccRecipients
-
-	// Force an out-of-range provider into the available list so it passes the
-	// availability check but matches no switch case, reaching the default
-	const unknownProvider = ServiceProvider(999)
-	mail.AvailableProviders = []ServiceProvider{unknownProvider}
-
-	email := mail.NewEmail()
-	email.Subject = "Test subject"
-	email.PlainTextContent = "Test content"
-	email.Recipients = []string{testRecipientSuccess}
-
-	err := mail.SendEmail(context.Background(), email, unknownProvider)
-	require.ErrorIs(t, err, ErrProviderNotFound)
-}
-
-// TestEmail_ApplyTemplatesTextError covers the text-template execution error path
-func TestEmail_ApplyTemplatesTextError(t *testing.T) {
-	t.Parallel()
-
-	email := &Email{}
-
-	// A text-only template referencing a nested field on a nil value fails at
-	// execution time (the HTML template is nil so only the text branch runs)
-	textTemplate := template.Must(template.New("text").Parse("{{.Foo.Bar}}"))
-
-	err := email.ApplyTemplates(nil, textTemplate, struct{ Foo any }{Foo: nil})
-	require.Error(t, err)
-}
-
-// TestEmail_ParseHTMLTemplateParseError covers the parse-error path after style
-// injection when the template file contains invalid template syntax
-func TestEmail_ParseHTMLTemplateParseError(t *testing.T) {
-	t.Parallel()
-
-	dir := t.TempDir()
-	file := filepath.Join(dir, "broken.html")
-
-	// {{.Styles}} triggers the inline branch; the unclosed action {{.Broken}
-	// makes ParseFiles fail after inliner.Inline succeeds
-	content := "<html><head><style>{{.Styles}}</style></head><body>{{.Broken}</body></html>"
-	require.NoError(t, os.WriteFile(file, []byte(content), 0o600))
-
+	file := writeTemplateFile(t, "inline.html", "<html><head><style>{{.Styles}}</style></head><body>{{.Extra}}</body></html>")
 	email := &Email{CSS: []byte("body { color: red; }")}
-	_, err := email.ParseHTMLTemplate(file)
+	htmlTemplate, err := email.ParseHTMLTemplate(file)
+	require.NoError(t, err)
+
+	// The rendered HTML contains a second, malformed stylesheet
+	err = email.ApplyTemplates(htmlTemplate, nil, map[string]template.HTML{"Extra": "<style>}</style>"})
 	require.Error(t, err)
 }
 
-// TestEmail_ParseHTMLTemplateInlinerError covers the inliner.Inline() error path.
-// The template contains {{.Styles}} inside a <style> element and email.CSS is a
-// lone "}" (malformed CSS). After injection the block becomes <style>}</style>,
-// so douceur's CSS parser errors before ParseTemplate/Parse run
-func TestEmail_ParseHTMLTemplateInlinerError(t *testing.T) {
+// TestIsNilTemplate checks nil template detection
+func TestIsNilTemplate(t *testing.T) {
 	t.Parallel()
 
-	dir := t.TempDir()
-	file := filepath.Join(dir, "bad_css.html")
+	var htmlNil *template.Template
+	assert.True(t, isNilTemplate(nil))
+	assert.True(t, isNilTemplate(htmlNil))
+	assert.False(t, isNilTemplate(texttemplate.New("x")))
+}
 
-	// {{.Styles}} inside a <style> tag triggers the inline branch; non-empty CSS
-	// keeps len(e.CSS) > 0 true
-	content := "<html><head><style>{{.Styles}}</style></head><body></body></html>"
-	require.NoError(t, os.WriteFile(file, []byte(content), 0o600))
+// TestMailService_Send checks a successful send returns the provider result
+func TestMailService_Send(t *testing.T) {
+	t.Parallel()
 
-	email := &Email{CSS: []byte("}")}
-	parsed, err := email.ParseHTMLTemplate(file)
-	require.Error(t, err)
-	require.Nil(t, parsed)
+	provider := &fakeProvider{result: &SendResult{MessageID: testMessageID, Response: "raw"}}
+	service := newTestService(t, map[ServiceProvider]Provider{Postmark: provider})
+
+	result, err := service.Send(context.Background(), newValidEmail(), Postmark)
+	require.NoError(t, err)
+	assert.Equal(t, &SendResult{MessageID: testMessageID, Provider: Postmark, Response: "raw"}, result)
+	assert.True(t, provider.hadDeadline(), "sends are bounded by the default timeout")
+
+	require.NoError(t, service.SendEmail(context.Background(), newValidEmail(), Postmark))
+	assert.Equal(t, 2, provider.callCount())
+}
+
+// TestMailService_SendNilResult checks a provider returning no result
+func TestMailService_SendNilResult(t *testing.T) {
+	t.Parallel()
+
+	service := newTestService(t, map[ServiceProvider]Provider{SMTP: &fakeProvider{}})
+	result, err := service.Send(context.Background(), newValidEmail(), SMTP)
+	require.NoError(t, err)
+	assert.Equal(t, &SendResult{Provider: SMTP}, result)
+}
+
+// TestMailService_SendFailover checks providers are tried in order
+func TestMailService_SendFailover(t *testing.T) {
+	t.Parallel()
+
+	t.Run("second provider succeeds", func(t *testing.T) {
+		first := &fakeProvider{err: errProviderDown}
+		second := &fakeProvider{result: &SendResult{MessageID: "second"}}
+		service := newTestService(t, map[ServiceProvider]Provider{SendGrid: first, Postmark: second})
+
+		result, err := service.Send(context.Background(), newValidEmail(), SendGrid, Postmark)
+		require.NoError(t, err)
+		assert.Equal(t, Postmark, result.Provider)
+		assert.Equal(t, 1, first.callCount())
+	})
+
+	t.Run("all providers fail", func(t *testing.T) {
+		first := &fakeProvider{err: errProviderDown}
+		second := &fakeProvider{err: ErrPostmarkError}
+		service := newTestService(t, map[ServiceProvider]Provider{SendGrid: first, Postmark: second})
+
+		_, err := service.Send(context.Background(), newValidEmail(), SendGrid, Postmark)
+		require.ErrorIs(t, err, errProviderDown)
+		require.ErrorIs(t, err, ErrPostmarkError)
+		assert.Contains(t, err.Error(), "SendGrid: provider is down")
+		assert.Contains(t, err.Error(), "Postmark: error from postmark")
+	})
+
+	t.Run("default order is the available providers", func(t *testing.T) {
+		first := &fakeProvider{err: errProviderDown}
+		second := &fakeProvider{result: &SendResult{}}
+		service := newTestService(t, map[ServiceProvider]Provider{Mandrill: first, Resend: second})
+
+		result, err := service.Send(context.Background(), newValidEmail())
+		require.NoError(t, err)
+		assert.Equal(t, Resend, result.Provider)
+	})
+
+	t.Run("canceled context stops the failover", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		first := &fakeProvider{sendFn: func(context.Context, *Email) (*SendResult, error) {
+			cancel()
+			return nil, context.Canceled
+		}}
+		second := &fakeProvider{result: &SendResult{}}
+		service := newTestService(t, map[ServiceProvider]Provider{SendGrid: first, Postmark: second})
+
+		_, err := service.Send(ctx, newValidEmail(), SendGrid, Postmark)
+		require.ErrorIs(t, err, context.Canceled)
+		assert.Zero(t, second.callCount())
+	})
+
+	t.Run("attachments are resent to the next provider", func(t *testing.T) {
+		var seen []string
+		read := func(_ context.Context, email *Email) (*SendResult, error) {
+			attachments, err := readAttachments(email)
+			if err != nil {
+				return nil, err
+			}
+			seen = append(seen, string(attachments[0].content))
+			return nil, errProviderDown
+		}
+		service := newTestService(t, map[ServiceProvider]Provider{
+			SendGrid: &fakeProvider{sendFn: read},
+			Postmark: &fakeProvider{sendFn: read},
+		})
+
+		email := newValidEmail()
+		email.AddAttachment(testFileName, "text/plain", strings.NewReader("contents"))
+		_, err := service.Send(context.Background(), email, SendGrid, Postmark)
+		require.Error(t, err)
+		assert.Equal(t, []string{"contents", "contents"}, seen)
+	})
+}
+
+// TestMailService_SendProviderNotFound checks unknown providers
+func TestMailService_SendProviderNotFound(t *testing.T) {
+	t.Parallel()
+
+	service := newTestService(t, map[ServiceProvider]Provider{Mandrill: &fakeProvider{}})
+
+	err := service.SendEmail(context.Background(), newValidEmail(), AwsSes)
+	require.ErrorIs(t, err, ErrProviderNotFound)
+	assert.Equal(t, "service provider: AwsSes was not in the list of available service providers: [Mandrill], email not sent: "+
+		ErrProviderNotFound.Error(), err.Error())
+
+	_, err = service.Send(context.Background(), newValidEmail(), Mandrill, ServiceProvider(42))
+	require.ErrorIs(t, err, ErrProviderNotFound)
+
+	_, err = new(MailService).Send(context.Background(), newValidEmail())
+	require.ErrorIs(t, err, ErrNoServiceProvider)
+}
+
+// TestMailService_SendFeatures checks unsupported feature handling
+func TestMailService_SendFeatures(t *testing.T) {
+	t.Parallel()
+
+	newProvider := func() *featureFakeProvider {
+		return &featureFakeProvider{fakeProvider{result: &SendResult{}, supported: []Feature{FeatureTags}}}
+	}
+
+	t.Run("unsupported feature is logged", func(t *testing.T) {
+		var logs bytes.Buffer
+		provider := newProvider()
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+		service.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+
+		email := newValidEmail()
+		email.TrackOpens = true
+		email.Tags = []string{"supported"}
+		_, err := service.Send(context.Background(), email, SMTP)
+		require.NoError(t, err)
+		assert.Equal(t, 1, provider.callCount())
+		assert.Contains(t, logs.String(), "level=WARN")
+		assert.Contains(t, logs.String(), "provider=SMTP")
+		assert.Contains(t, logs.String(), "features=[track_opens]")
+	})
+
+	t.Run("supported features are not logged", func(t *testing.T) {
+		var logs bytes.Buffer
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: newProvider()})
+		service.Logger = slog.New(slog.NewTextHandler(&logs, nil))
+
+		email := newValidEmail()
+		email.Tags = []string{"supported"}
+		_, err := service.Send(context.Background(), email, SMTP)
+		require.NoError(t, err)
+		assert.Empty(t, logs.String())
+	})
+
+	t.Run("strict features returns an error", func(t *testing.T) {
+		provider := newProvider()
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+		service.StrictFeatures = true
+
+		email := newValidEmail()
+		email.TrackClicks = true
+		_, err := service.Send(context.Background(), email, SMTP)
+		require.ErrorIs(t, err, ErrUnsupportedFeature)
+		assert.Contains(t, err.Error(), "SMTP does not support [track_clicks]")
+		assert.Zero(t, provider.callCount())
+	})
+
+	t.Run("unsupported send at is always an error", func(t *testing.T) {
+		provider := newProvider()
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+
+		email := newValidEmail()
+		email.SendAt = time.Now().Add(time.Hour)
+		_, err := service.Send(context.Background(), email, SMTP)
+		require.ErrorIs(t, err, ErrUnsupportedFeature)
+		assert.Zero(t, provider.callCount())
+	})
+
+	t.Run("send at fails over to a provider that supports it", func(t *testing.T) {
+		scheduler := &featureFakeProvider{fakeProvider{result: &SendResult{}, supported: []Feature{FeatureSendAt}}}
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: newProvider(), SendGrid: scheduler})
+
+		email := newValidEmail()
+		email.SendAt = time.Now().Add(time.Hour)
+		result, err := service.Send(context.Background(), email, SMTP, SendGrid)
+		require.NoError(t, err)
+		assert.Equal(t, SendGrid, result.Provider)
+	})
+}
+
+// TestMailService_SendTimeout checks the per-send timeout configuration
+func TestMailService_SendTimeout(t *testing.T) {
+	t.Parallel()
+
+	t.Run("timeout ends a slow send", func(t *testing.T) {
+		provider := &fakeProvider{sendFn: func(ctx context.Context, _ *Email) (*SendResult, error) {
+			<-ctx.Done()
+			return nil, ctx.Err()
+		}}
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+		service.SendTimeout = 20 * time.Millisecond
+
+		_, err := service.Send(context.Background(), newValidEmail(), SMTP)
+		require.ErrorIs(t, err, context.DeadlineExceeded)
+	})
+
+	t.Run("negative timeout disables it", func(t *testing.T) {
+		provider := &fakeProvider{result: &SendResult{}}
+		service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+		service.SendTimeout = -1
+
+		_, err := service.Send(context.Background(), newValidEmail(), SMTP)
+		require.NoError(t, err)
+		assert.False(t, provider.hadDeadline())
+	})
+}
+
+// TestMailService_SendReusesEmail checks an email with reader attachments can be sent twice
+func TestMailService_SendReusesEmail(t *testing.T) {
+	t.Parallel()
+
+	var sizes []int
+	provider := &fakeProvider{sendFn: func(_ context.Context, email *Email) (*SendResult, error) {
+		attachments, err := readAttachments(email)
+		if err != nil {
+			return nil, err
+		}
+		sizes = append(sizes, len(attachments[0].content))
+		return &SendResult{}, nil
+	}}
+	service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+
+	email := newValidEmail()
+	email.AddAttachment(testFileName, "text/plain", strings.NewReader("twelve bytes"))
+	for range 2 {
+		_, err := service.Send(context.Background(), email, SMTP)
+		require.NoError(t, err)
+	}
+	assert.Equal(t, []int{12, 12}, sizes, "the second send must not get an empty attachment")
+}
+
+// TestMailService_SendAttachmentLimit checks the attachment size limit
+func TestMailService_SendAttachmentLimit(t *testing.T) {
+	t.Parallel()
+
+	service := newTestService(t, map[ServiceProvider]Provider{SMTP: &fakeProvider{result: &SendResult{}}})
+	service.MaxAttachmentSize = 4
+
+	email := newValidEmail()
+	email.AddAttachmentBytes(testFileName, "text/plain", []byte("12345"))
+	_, err := service.Send(context.Background(), email, SMTP)
+	require.ErrorIs(t, err, ErrAttachmentsTooLarge)
+
+	service.MaxAttachmentSize = -1
+	_, err = service.Send(context.Background(), email, SMTP)
+	require.NoError(t, err)
+}
+
+// TestMailService_SendValidation checks invalid emails are rejected before sending
+func TestMailService_SendValidation(t *testing.T) {
+	t.Parallel()
+
+	provider := &fakeProvider{result: &SendResult{}}
+	service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+
+	tests := []struct {
+		name     string
+		setup    func(email *Email)
+		expected error
+	}{
+		{"missing subject", func(email *Email) { email.Subject = "" }, ErrMissingSubject},
+		{"missing content", func(email *Email) { email.PlainTextContent = "" }, ErrMissingContent},
+		{"missing recipient", func(email *Email) { email.Recipients = nil }, ErrMissingRecipient},
+		{"too many to", func(email *Email) { email.Recipients = make([]string, 51) }, ErrMaxToRecipientsReached},
+		{"too many cc", func(email *Email) { email.RecipientsCc = make([]string, 51) }, ErrMaxCcRecipientsReached},
+		{"too many bcc", func(email *Email) { email.RecipientsBcc = make([]string, 51) }, ErrMaxBccRecipientsReached},
+		{"invalid from", func(email *Email) { email.FromAddress = "nope" }, ErrInvalidFromAddress},
+		{"invalid recipient", func(email *Email) { email.Recipients = []string{"nope"} }, ErrInvalidRecipient},
+		{"invalid header", func(email *Email) { email.SetHeader("Bcc", "x@example.com") }, ErrInvalidHeader},
+		{"invalid metadata", func(email *Email) { email.Metadata = map[string]string{"": "v"} }, ErrInvalidMetadata},
+		{"invalid attachment", func(email *Email) { email.Attachments = []Attachment{{FileName: "a"}} }, ErrInvalidAttachment},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			email := newValidEmail()
+			test.setup(email)
+			_, err := service.Send(context.Background(), email, SMTP)
+			require.ErrorIs(t, err, test.expected)
+		})
+	}
+
+	t.Run("nil email", func(t *testing.T) {
+		_, err := service.Send(context.Background(), nil, SMTP)
+		require.ErrorIs(t, err, ErrMissingContent)
+	})
+
+	assert.Zero(t, provider.callCount())
+}
+
+// TestMailService_SendConcurrent checks concurrent sends through one service
+func TestMailService_SendConcurrent(t *testing.T) {
+	t.Parallel()
+
+	provider := &fakeProvider{result: &SendResult{}}
+	service := newTestService(t, map[ServiceProvider]Provider{SMTP: provider})
+
+	errs := make(chan error, 20)
+	for range 20 {
+		go func() {
+			email := newValidEmail()
+			email.AddAttachment(testFileName, "text/plain", strings.NewReader("data"))
+			_, err := service.Send(context.Background(), email, SMTP)
+			errs <- err
+		}()
+	}
+	for range 20 {
+		require.NoError(t, <-errs)
+	}
+	assert.Equal(t, 20, provider.callCount())
 }

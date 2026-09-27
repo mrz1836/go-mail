@@ -3,126 +3,103 @@ package gomail
 import (
 	"context"
 	"fmt"
-	"io"
-	"log"
-	"strings"
+	"time"
 
 	"github.com/resend/resend-go/v4"
 )
 
-const (
-	resendTagMaxLength = 256    // maximum length Resend allows for a tag name or value
-	resendTagValue     = "true" // value applied to every tag (go-mail tags have no value)
-)
-
-// resendInterface is an interface for Resend/mocking
-type resendInterface interface {
-	SendWithContext(ctx context.Context, params *resend.SendEmailRequest) (*resend.SendEmailResponse, error)
+// ResendClient is the Resend API used by ResendProvider; the Emails service of
+// a *resend.Client (*resend.EmailsSvcImpl) satisfies it
+type ResendClient interface {
+	SendWithOptions(ctx context.Context, params *resend.SendEmailRequest, options *resend.SendEmailOptions) (*resend.SendEmailResponse, error)
 }
 
-// newResendClient creates a new Resend client; *resend.EmailsSvcImpl already
-// satisfies resendInterface, so no wrapper type is needed
-func newResendClient(apiKey string) resendInterface {
-	return resend.NewClient(apiKey).Emails
+// ResendProvider sends email through Resend.
+//
+// Tags and Metadata become Resend tags (sanitized to the characters Resend
+// allows). Open/click tracking is configured per domain in Resend, not per email.
+type ResendProvider struct {
+	client ResendClient
 }
 
-// sendViaResend sends an email using the Resend service
-func sendViaResend(ctx context.Context, client resendInterface, email *Email) (err error) {
-	// Create the Resend request
+// NewResendProvider creates a Resend provider, ie: NewResendProvider(resend.NewClient(key).Emails)
+func NewResendProvider(client ResendClient) *ResendProvider {
+	return &ResendProvider{client: client}
+}
+
+// Send sends the email through Resend; the result MessageID is the Resend email id
+func (p *ResendProvider) Send(ctx context.Context, email *Email) (*SendResult, error) {
+	env, err := parseEnvelope(email)
+	if err != nil {
+		return nil, err
+	}
+
+	var attachments []attachmentData
+	if attachments, err = readAttachments(email); err != nil {
+		return nil, err
+	}
+
 	request := &resend.SendEmailRequest{
-		Bcc:     email.RecipientsBcc,
-		Cc:      email.RecipientsCc,
-		From:    email.FromAddress,
+		Bcc:     formatAddresses(env.bcc),
+		Cc:      formatAddresses(env.cc),
+		From:    formatAddress(&env.from),
+		Headers: headerMap(email),
 		Html:    email.HTMLContent,
-		ReplyTo: email.ReplyToAddress,
 		Subject: email.Subject,
-		Tags:    resendTags(email.Tags),
+		Tags:    resendTags(email.Tags, email.Metadata),
 		Text:    email.PlainTextContent,
-		To:      email.Recipients,
+		To:      formatAddresses(env.to),
 	}
-
-	// Set the "from" name if given (RFC 5322: "Name <address>")
-	if len(email.FromName) > 0 {
-		request.From = email.FromName + " <" + email.FromAddress + ">"
+	if env.replyTo != nil {
+		request.ReplyTo = formatAddress(env.replyTo)
 	}
-
-	// Add importance headers
-	if email.Important {
-		request.Headers = map[string]string{
-			headerXPriority:       headerXPriorityValue,
-			headerXMSMailPriority: headerHighValue,
-			headerImportance:      headerHighValue,
-		}
-	}
-
-	// Warn about features that are set but not available per email
-	// (Resend auto-generates the plain-text part from HTML natively, so no auto text warning)
-	if email.TrackClicks || email.TrackOpens {
-		log.Printf("warning: open/click tracking is enabled, but Resend configures tracking per domain (not per email)")
+	if !email.SendAt.IsZero() {
+		request.ScheduledAt = email.SendAt.UTC().Format(time.RFC3339)
 	}
 
 	// Convert attachments to Resend format (the SDK encodes the raw bytes itself)
-	for _, attachment := range email.Attachments {
-
-		// Read the attachment contents
-		var content []byte
-		if content, err = io.ReadAll(attachment.FileReader); err != nil {
-			return err
-		}
-
-		// Add to the request
+	for _, att := range attachments {
 		request.Attachments = append(request.Attachments, &resend.Attachment{
-			Content:     content,
-			ContentType: attachment.FileType,
-			Filename:    attachment.FileName,
+			Content:     att.content,
+			ContentId:   att.contentID,
+			ContentType: att.contentType,
+			Filename:    att.name,
 		})
 	}
 
-	// Send the email
+	applyProviderOptions[ResendOption](email.ProviderOptions, request)
+
 	var resp *resend.SendEmailResponse
-	if resp, err = client.SendWithContext(ctx, request); err != nil {
-		return fmt.Errorf("error from resend: %w: %w", ErrResendError, err)
+	if resp, err = p.client.SendWithOptions(ctx, request, &resend.SendEmailOptions{IdempotencyKey: email.IdempotencyKey}); err != nil {
+		return nil, fmt.Errorf("error from resend: %w: %w", ErrResendError, err)
 	}
 
 	// Resend returns the id of the created email on success
 	if resp == nil || len(resp.Id) == 0 {
-		err = fmt.Errorf("error from resend: empty message id: %w", ErrResendError)
+		return nil, fmt.Errorf("error from resend: empty message id: %w", ErrResendError)
 	}
 
-	return err
+	return &SendResult{MessageID: resp.Id, Response: resp}, nil
 }
 
-// resendTags converts go-mail tags into Resend tags; Resend only allows ASCII
-// letters, numbers, underscores, and dashes (max 256 chars), so any other
-// characters are replaced with an underscore. Empty and duplicate tags are dropped.
-func resendTags(tags []string) []resend.Tag {
-	if len(tags) == 0 {
+// SupportsFeature reports whether Resend supports the feature (Resend builds
+// the plain-text part from the HTML natively, so auto text is supported)
+func (p *ResendProvider) SupportsFeature(feature Feature) bool {
+	return supportsFeature([]Feature{
+		FeatureAutoText, FeatureIdempotencyKey, FeatureMetadata, FeatureSendAt, FeatureTags,
+	}, feature)
+}
+
+// resendTags converts go-mail tags and metadata into Resend tags
+func resendTags(tags []string, metadata map[string]string) []resend.Tag {
+	pairs := nameValueTags(tags, metadata)
+	if len(pairs) == 0 {
 		return nil
 	}
 
-	resendTagList := make([]resend.Tag, 0, len(tags))
-	seen := make(map[string]struct{}, len(tags))
-	for _, tag := range tags {
-
-		// Sanitize the tag into a valid Resend tag name
-		name := strings.Map(func(r rune) rune {
-			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '_' || r == '-' {
-				return r
-			}
-			return '_'
-		}, tag)
-		if len(name) > resendTagMaxLength {
-			name = name[:resendTagMaxLength]
-		}
-
-		// Skip empty and duplicate tags
-		if _, ok := seen[name]; ok || len(name) == 0 {
-			continue
-		}
-		seen[name] = struct{}{}
-
-		resendTagList = append(resendTagList, resend.Tag{Name: name, Value: resendTagValue})
+	list := make([]resend.Tag, 0, len(pairs))
+	for _, pair := range pairs {
+		list = append(list, resend.Tag{Name: pair.name, Value: pair.value})
 	}
-
-	return resendTagList
+	return list
 }
