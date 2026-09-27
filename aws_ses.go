@@ -1,105 +1,78 @@
 package gomail
 
 import (
-	"bytes"
 	"context"
-	"fmt"
-	"log"
-	"strings"
+	"time"
 
+	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
-	"github.com/domodwyer/mailyak"
 )
 
-// awsSesInterface is an interface for ses/mocking
-type awsSesInterface interface {
-	SendRawEmail(ctx context.Context, raw []byte) (string, error)
-}
-
-// sesSendRawEmailAPI is the narrow slice of the AWS SDK v2 SES client used by
-// awsSesSdkV2Client; *ses.Client satisfies it and it enables mocking in tests
-type sesSendRawEmailAPI interface {
+// SESClient is the AWS SES API used by SESProvider; *ses.Client satisfies it
+type SESClient interface {
 	SendRawEmail(ctx context.Context, params *ses.SendRawEmailInput, optFns ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
 }
 
-// awsSesSdkV2Client wraps the AWS SDK v2 SES client to implement awsSesInterface
-type awsSesSdkV2Client struct {
-	client sesSendRawEmailAPI
+// SESProvider sends email through AWS SES (SendRawEmail).
+//
+// Tags and Metadata become SES message tags. Open/click tracking is configured
+// on an SES configuration set rather than per email.
+type SESProvider struct {
+	client           SESClient
+	now              func() time.Time
+	configurationSet string
 }
 
-// SendRawEmail implements the awsSesInterface using AWS SDK v2
-func (c *awsSesSdkV2Client) SendRawEmail(ctx context.Context, raw []byte) (string, error) {
+// NewSESProvider creates an AWS SES provider; configurationSet is optional
+// (use it for event publishing, ie: open/click tracking)
+func NewSESProvider(client SESClient, configurationSet string) *SESProvider {
+	return &SESProvider{client: client, configurationSet: configurationSet, now: time.Now}
+}
+
+// Send sends the email through AWS SES; the result MessageID is the SES message id
+func (p *SESProvider) Send(ctx context.Context, email *Email) (*SendResult, error) {
+	env, err := parseEnvelope(email)
+	if err != nil {
+		return nil, err
+	}
+
+	var attachments []attachmentData
+	if attachments, err = readAttachments(email); err != nil {
+		return nil, err
+	}
+
+	// SES assigns its own Message-ID, so none is generated here
+	var raw []byte
+	if raw, err = buildMIME(email, env, attachments, "", p.now()); err != nil {
+		return nil, err
+	}
+
+	// Recipients are passed as Destinations so the Bcc header is never needed
 	input := &ses.SendRawEmailInput{
-		RawMessage: &types.RawMessage{
-			Data: raw,
-		},
+		Destinations: env.allRecipients(),
+		RawMessage:   &types.RawMessage{Data: raw},
+	}
+	if len(p.configurationSet) > 0 {
+		input.ConfigurationSetName = aws.String(p.configurationSet)
+	}
+	for _, tag := range nameValueTags(email.Tags, email.Metadata) {
+		input.Tags = append(input.Tags, types.MessageTag{Name: aws.String(tag.name), Value: aws.String(tag.value)})
+	}
+	applyProviderOptions[SESOption](email.ProviderOptions, input)
+
+	var output *ses.SendRawEmailOutput
+	if output, err = p.client.SendRawEmail(ctx, input); err != nil {
+		return nil, err
+	}
+	if output == nil || output.MessageId == nil || len(*output.MessageId) == 0 {
+		return nil, ErrInvalidAWSResponse
 	}
 
-	result, err := c.client.SendRawEmail(ctx, input)
-	if err != nil {
-		return "", err
-	}
-
-	// Format response similar to what was expected from v1 SDK
-	requestID := "unknown"
-	if result.ResultMetadata.Get("RequestId") != nil {
-		if id, ok := result.ResultMetadata.Get("RequestId").(string); ok {
-			requestID = id
-		}
-	}
-
-	// Guard against a nil MessageId on an otherwise successful response
-	messageID := ""
-	if result.MessageId != nil {
-		messageID = *result.MessageId
-	}
-
-	responseStr := fmt.Sprintf(`<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>%s</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>%s</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`, messageID, requestID)
-
-	return responseStr, nil
+	return &SendResult{MessageID: *output.MessageId, Response: output}, nil
 }
 
-// sendViaAwsSes sends an email using the AWS SES service
-func sendViaAwsSes(ctx context.Context, client awsSesInterface, email *Email) (err error) {
-	// Create new mail message
-	mail := mailyak.New("", nil)
-
-	// Populate the shared mailyak message fields
-	populateMailyakMessage(mail, email)
-
-	// Warn about features that are set but not available
-	if email.TrackClicks {
-		log.Printf("warning: track clicks is enabled, but AWS SES does not offer this feature")
-	}
-	if email.TrackOpens {
-		log.Printf("warning: track opens is enabled, but AWS SES does not offer this feature")
-	}
-	if email.AutoText {
-		log.Printf("warning: auto text is enabled, but AWS SES does not offer this feature")
-	}
-
-	// Create the email buffer and pass to the ses service
-	var buf *bytes.Buffer
-	if buf, err = mail.MimeBuf(); err != nil {
-		return err
-	}
-
-	// Send the message post and check the response
-	var awsResponse string
-	awsResponse, err = client.SendRawEmail(ctx, buf.Bytes())
-	if err != nil {
-		return err
-	} else if !strings.Contains(awsResponse, "SendRawEmailResult") {
-		err = fmt.Errorf("aws ses did not return expected valid response: %s: %w", awsResponse, ErrInvalidAWSResponse)
-	}
-
-	return err
+// SupportsFeature reports whether AWS SES supports the feature
+func (p *SESProvider) SupportsFeature(feature Feature) bool {
+	return supportsFeature([]Feature{FeatureMetadata, FeatureTags}, feature)
 }

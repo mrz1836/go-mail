@@ -2,291 +2,164 @@ package gomail
 
 import (
 	"context"
-	"strings"
+	"errors"
 	"testing"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
 	"github.com/aws/aws-sdk-go-v2/service/ses/types"
-	"github.com/aws/smithy-go/middleware"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// getSuccessResult returns a successful AWS SES response
-func getSuccessResult() string {
-	return `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>01000172d9097ae4-d7e95511-f9d4-434d-9d2f-a0d860c18ee8-000000</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>8a9c266b-7b2d-4a93-89f5-9ca0031fezas</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`
+// errSESThrottled is a test-only SES API error
+var errSESThrottled = errors.New("throttling: rate exceeded")
+
+// fakeSESClient records the last SendRawEmail input
+type fakeSESClient struct {
+	err    error
+	input  *ses.SendRawEmailInput
+	output *ses.SendRawEmailOutput
 }
 
-// mockAwsSesInterface is a mocking interface for AWS SES
-type mockAwsSesInterface struct{}
-
-// SendRawEmail is for mocking
-func (m *mockAwsSesInterface) SendRawEmail(_ context.Context, raw []byte) (string, error) {
-	if len(raw) == 0 {
-		return "", ErrMissingEmailContents
-	}
-
-	rawString := string(raw)
-
-	// Success
-	if strings.Contains(rawString, "To: test@domain.com") {
-		return getSuccessResult(), nil
-	}
-
-	// Bad hostname
-	if strings.Contains(rawString, "To: test@badhostname.com") {
-		return "", ErrBadHostname
-	}
-
-	// Bad result
-	if strings.Contains(rawString, "To: test@badresult.com") {
-		return "<ErrorMessage>Failed!</ErrorMessage>", nil
-	}
-
-	// Default is success
-	return getSuccessResult(), nil
+// SendRawEmail records the input and returns the configured outcome
+func (f *fakeSESClient) SendRawEmail(_ context.Context, params *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
+	f.input = params
+	return f.output, f.err
 }
 
-// newMockAwsSesClient will create a new mock client for AWS SES
-func newMockAwsSesClient() awsSesInterface {
-	return &mockAwsSesInterface{}
+// newFakeSESClient returns a fake SES client that succeeds
+func newFakeSESClient() *fakeSESClient {
+	return &fakeSESClient{output: &ses.SendRawEmailOutput{MessageId: aws.String(testMessageID)}}
 }
 
-// TestSendViaAwsSes will test the sendViaAwsSes() method
-func TestSendViaAwsSes(t *testing.T) {
+// newTestSESProvider returns an SES provider with a fixed clock
+func newTestSESProvider(client SESClient, configurationSet string) *SESProvider {
+	provider := NewSESProvider(client, configurationSet)
+	provider.now = testMIMEDate
+	return provider
+}
+
+// TestSESProviderSend checks the SendRawEmail request
+func TestSESProviderSend(t *testing.T) {
 	t.Parallel()
 
-	// Setup mock client and a ready-to-send email
-	client := newMockAwsSesClient()
+	client := newFakeSESClient()
+	provider := newTestSESProvider(client, "tracking")
+
 	email := newProviderTestEmail(t)
+	email.Recipients = []string{"To <to@example.com>", "dup@example.com"}
+	email.RecipientsCc = []string{testCcAddress, "DUP@example.com"}
+	email.RecipientsBcc = []string{testBccAddress}
+	email.Tags = []string{"welcome"}
+	email.Metadata = map[string]string{"user": "42"}
 
-	// Create the list of tests
-	cases := []providerSendCase{
-		{"successful send", testRecipientSuccess, false},
-		{"bad hostname", "test@badhostname.com", true},
-		{"bad result", "test@badresult.com", true},
-	}
+	result, err := provider.Send(context.Background(), email)
+	require.NoError(t, err)
+	assert.Equal(t, testMessageID, result.MessageID)
+	assert.Equal(t, client.output, result.Response)
 
-	// Loop tests
-	runProviderSendCases(t, email, cases, func() error {
-		return sendViaAwsSes(context.Background(), client, email)
-	})
+	input := client.input
+	assert.Equal(t, []string{"to@example.com", "dup@example.com", testCcAddress, testBccAddress}, input.Destinations)
+	assert.Equal(t, "tracking", aws.ToString(input.ConfigurationSetName))
+	assert.Equal(t, []types.MessageTag{
+		{Name: aws.String("welcome"), Value: aws.String(tagValueMarker)},
+		{Name: aws.String("user"), Value: aws.String("42")},
+	}, input.Tags)
+
+	// The raw message never discloses Bcc recipients
+	parsed := parseMIME(t, input.RawMessage.Data)
+	assert.Empty(t, parsed.header.Get("Bcc"))
+	assert.NotContains(t, string(input.RawMessage.Data), testBccAddress)
+	assert.Empty(t, parsed.header.Get("Message-Id"), "SES assigns the Message-ID")
+	assert.Equal(t, "Test", parsed.part(t, mimeTypePlain).content)
+	require.Len(t, parsed.parts, 3)
+	disposition, filename := partDisposition(parsed.parts[2].header)
+	assert.Equal(t, "attachment", disposition)
+	assert.Equal(t, "test-attachment-file.txt", filename)
 }
 
-// TestSendViaAwsSes_MimeBufError verifies sendViaAwsSes returns the error from
-// mailyak's MimeBuf() when building the MIME message fails. The failure is forced
-// through public Email inputs alone: an attachment whose reader always errors
-// makes mailyak's writeAttachments (invoked by MimeBuf) return that error before
-// the SES client is ever called
-func TestSendViaAwsSes_MimeBufError(t *testing.T) {
+// TestSESProviderSendMinimal checks optional fields are omitted
+func TestSESProviderSendMinimal(t *testing.T) {
 	t.Parallel()
 
-	email := &Email{
-		Recipients: []string{testRecipientSuccess},
-		Subject:    "MimeBuf error path",
-		Attachments: []Attachment{
-			{FileName: "bad.txt", FileType: "text/plain", FileReader: errReader{}},
-		},
-	}
-
-	// The SES client is never reached because MimeBuf fails first
-	client := newMockAwsSesClient()
-
-	err := sendViaAwsSes(context.Background(), client, email)
-	require.ErrorIs(t, err, ErrBadHostname)
+	client := newFakeSESClient()
+	_, err := newTestSESProvider(client, "").Send(context.Background(), newValidEmail())
+	require.NoError(t, err)
+	assert.Nil(t, client.input.ConfigurationSetName)
+	assert.Nil(t, client.input.Tags)
 }
 
-// mockSESClient is a mock implementation of the AWS SES v2 client
-type mockSESClient struct {
-	sendRawEmailFunc func(ctx context.Context, params *ses.SendRawEmailInput, optFns ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
+// TestSESProviderOptions checks that SESOption customizes the request
+func TestSESProviderOptions(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeSESClient()
+	email := newValidEmail().With(SESOption(func(input *ses.SendRawEmailInput) {
+		input.FromArn = aws.String("arn:aws:ses:us-east-1:123:identity/example.com")
+	}))
+
+	_, err := newTestSESProvider(client, "").Send(context.Background(), email)
+	require.NoError(t, err)
+	assert.Equal(t, "arn:aws:ses:us-east-1:123:identity/example.com", aws.ToString(client.input.FromArn))
 }
 
-// SendRawEmail implements the mock behavior for SES client
-func (m *mockSESClient) SendRawEmail(ctx context.Context, params *ses.SendRawEmailInput, optFns ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-	return m.sendRawEmailFunc(ctx, params, optFns...)
-}
-
-// TestAwsSesSdkV2Client_SendRawEmail tests the SendRawEmail method of awsSesSdkV2Client
-func TestAwsSesSdkV2Client_SendRawEmail(t *testing.T) {
+// TestSESProviderErrors checks the SES failure paths
+func TestSESProviderErrors(t *testing.T) {
 	t.Parallel()
 
 	tests := []struct {
-		name           string
-		rawEmail       []byte
-		mockFunc       func(ctx context.Context, params *ses.SendRawEmailInput, optFns ...func(*ses.Options)) (*ses.SendRawEmailOutput, error)
-		expectedError  bool
-		expectedOutput string
+		name     string
+		client   *fakeSESClient
+		expected error
 	}{
-		{
-			name:     "successful send with request id",
-			rawEmail: []byte("To: test@example.com\r\nSubject: Test\r\n\r\nTest body"),
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				messageID := "01000172d9097ae4-d7e95511-f9d4-434d-9d2f-a0d860c18ee8-000000"
-				metadata := middleware.Metadata{}
-				metadata.Set("RequestId", "test-request-id-123")
-				output := &ses.SendRawEmailOutput{
-					MessageId:      &messageID,
-					ResultMetadata: metadata,
-				}
-				return output, nil
-			},
-			expectedError: false,
-			expectedOutput: `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>01000172d9097ae4-d7e95511-f9d4-434d-9d2f-a0d860c18ee8-000000</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>test-request-id-123</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`,
-		},
-		{
-			name:     "successful send without request id",
-			rawEmail: []byte("To: test@example.com\r\nSubject: Test\r\n\r\nTest body"),
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				messageID := "message-id-456"
-				metadata := middleware.Metadata{}
-				output := &ses.SendRawEmailOutput{
-					MessageId:      &messageID,
-					ResultMetadata: metadata,
-				}
-				return output, nil
-			},
-			expectedError: false,
-			expectedOutput: `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>message-id-456</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>unknown</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`,
-		},
-		{
-			name:     "successful send with non-string request id",
-			rawEmail: []byte("To: test@example.com\r\nSubject: Test\r\n\r\nTest body"),
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				messageID := "message-id-789"
-				metadata := middleware.Metadata{}
-				metadata.Set("RequestId", 12345) // Non-string type
-				output := &ses.SendRawEmailOutput{
-					MessageId:      &messageID,
-					ResultMetadata: metadata,
-				}
-				return output, nil
-			},
-			expectedError: false,
-			expectedOutput: `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>message-id-789</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>unknown</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`,
-		},
-		{
-			name:     "empty raw email data",
-			rawEmail: []byte{},
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				messageID := "empty-message-id"
-				metadata := middleware.Metadata{}
-				metadata.Set("RequestId", "empty-request-id")
-				output := &ses.SendRawEmailOutput{
-					MessageId:      &messageID,
-					ResultMetadata: metadata,
-				}
-				return output, nil
-			},
-			expectedError: false,
-			expectedOutput: `<SendRawEmailResponse xmlns="http://ses.amazonaws.com/doc/2010-12-01/">
-  <SendRawEmailResult>
-    <MessageId>empty-message-id</MessageId>
-  </SendRawEmailResult>
-  <ResponseMetadata>
-    <RequestId>empty-request-id</RequestId>
-  </ResponseMetadata>
-</SendRawEmailResponse>`,
-		},
-		{
-			name:     "aws sdk error",
-			rawEmail: []byte("To: test@example.com\r\nSubject: Test\r\n\r\nTest body"),
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				return nil, ErrAWSServiceError
-			},
-			expectedError: true,
-		},
-		{
-			name:     "ses validation error",
-			rawEmail: []byte("invalid email format"),
-			mockFunc: func(_ context.Context, _ *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-				return nil, &types.MessageRejected{
-					Message: aws.String("Email address not verified"),
-				}
-			},
-			expectedError: true,
-		},
+		{"api error", &fakeSESClient{err: errSESThrottled}, errSESThrottled},
+		{"nil output", &fakeSESClient{}, ErrInvalidAWSResponse},
+		{"nil message id", &fakeSESClient{output: &ses.SendRawEmailOutput{}}, ErrInvalidAWSResponse},
+		{"empty message id", &fakeSESClient{output: &ses.SendRawEmailOutput{MessageId: aws.String("")}}, ErrInvalidAWSResponse},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			mockClient := &mockSESClient{
-				sendRawEmailFunc: tt.mockFunc,
-			}
-
-			client := &awsSesSdkV2Client{
-				client: mockClient,
-			}
-
-			result, err := client.SendRawEmail(context.Background(), tt.rawEmail)
-
-			if tt.expectedError {
-				require.Error(t, err)
-				return
-			}
-
-			require.NoError(t, err)
-
-			assert.Equal(t, tt.expectedOutput, result)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := newTestSESProvider(test.client, "").Send(context.Background(), newValidEmail())
+			require.ErrorIs(t, err, test.expected)
 		})
 	}
 }
 
-// TestAwsSesSdkV2Client_SendRawEmail_InputValidation tests input validation
-func TestAwsSesSdkV2Client_SendRawEmail_InputValidation(t *testing.T) {
+// TestSESProviderInvalidEmail checks envelope and attachment errors
+func TestSESProviderInvalidEmail(t *testing.T) {
 	t.Parallel()
 
-	mockClient := &mockSESClient{
-		sendRawEmailFunc: func(_ context.Context, params *ses.SendRawEmailInput, _ ...func(*ses.Options)) (*ses.SendRawEmailOutput, error) {
-			// Verify the input structure is correct
-			require.NotNil(t, params.RawMessage)
-			require.NotNil(t, params.RawMessage.Data)
+	provider := newTestSESProvider(newFakeSESClient(), "")
 
-			messageID := "validation-test-id"
-			metadata := middleware.Metadata{}
-			metadata.Set("RequestId", "validation-request-id")
-			return &ses.SendRawEmailOutput{
-				MessageId:      &messageID,
-				ResultMetadata: metadata,
-			}, nil
-		},
+	badReplyTo := newValidEmail()
+	badReplyTo.ReplyToAddress = "not valid"
+	_, err := provider.Send(context.Background(), badReplyTo)
+	require.ErrorIs(t, err, ErrInvalidReplyToAddress)
+
+	badAttachment := newValidEmail()
+	badAttachment.AddAttachment(testFileName, "text/plain", errReader{})
+	_, err = provider.Send(context.Background(), badAttachment)
+	require.Error(t, err)
+}
+
+// TestSESProviderSupportsFeature checks the SES feature support
+func TestSESProviderSupportsFeature(t *testing.T) {
+	t.Parallel()
+
+	provider := NewSESProvider(nil, "")
+	assert.True(t, provider.SupportsFeature(FeatureTags))
+	assert.True(t, provider.SupportsFeature(FeatureMetadata))
+	for _, feature := range []Feature{FeatureAutoText, FeatureSendAt, FeatureTrackClicks, FeatureTrackOpens, FeatureIdempotencyKey} {
+		assert.False(t, provider.SupportsFeature(feature), feature)
 	}
+}
 
-	client := &awsSesSdkV2Client{
-		client: mockClient,
-	}
+// TestNewSESProviderWithSDKClient checks that *ses.Client satisfies SESClient
+func TestNewSESProviderWithSDKClient(t *testing.T) {
+	t.Parallel()
 
-	testData := []byte("test email data")
-	_, err := client.SendRawEmail(context.Background(), testData)
-	require.NoError(t, err)
+	provider := NewSESProvider(ses.New(ses.Options{Region: awsSesDefaultRegion}), "")
+	require.NotNil(t, provider)
 }

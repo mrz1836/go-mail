@@ -2,101 +2,101 @@ package gomail
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
-	"log"
+	"maps"
 	"strings"
 
 	"github.com/mrz1836/postmark"
 )
 
-// postmarkInterface is an interface for Postmark/mocking
-type postmarkInterface interface {
+// Postmark link tracking settings
+const (
+	postmarkTrackLinksAll  = "HtmlAndText"
+	postmarkTrackLinksNone = "None"
+)
+
+// PostmarkClient is the Postmark API used by PostmarkProvider; *postmark.Client satisfies it
+type PostmarkClient interface {
 	SendEmail(ctx context.Context, email postmark.Email) (postmark.EmailResponse, error)
 }
 
-// sendViaPostmark sends an email using the Postmark service
-func sendViaPostmark(ctx context.Context, client postmarkInterface, email *Email) (err error) {
-	// Create the email struct
+// PostmarkProvider sends email through Postmark.
+//
+// Postmark supports a single tag per email, so multiple Tags are joined with a
+// comma into one tag. Use a PostmarkOption to set the MessageStream.
+type PostmarkProvider struct {
+	client PostmarkClient
+}
+
+// NewPostmarkProvider creates a Postmark provider
+func NewPostmarkProvider(client PostmarkClient) *PostmarkProvider {
+	return &PostmarkProvider{client: client}
+}
+
+// Send sends the email through Postmark; the result MessageID is the Postmark message id
+func (p *PostmarkProvider) Send(ctx context.Context, email *Email) (*SendResult, error) {
+	env, err := parseEnvelope(email)
+	if err != nil {
+		return nil, err
+	}
+
+	var attachments []attachmentData
+	if attachments, err = readAttachments(email); err != nil {
+		return nil, err
+	}
+
 	postmarkEmail := postmark.Email{
-		From:       email.FromAddress,
+		Bcc:        strings.Join(formatAddresses(env.bcc), ","),
+		Cc:         strings.Join(formatAddresses(env.cc), ","),
+		From:       formatAddress(&env.from),
 		HTMLBody:   email.HTMLContent,
-		ReplyTo:    email.ReplyToAddress,
+		Metadata:   maps.Clone(email.Metadata),
 		Subject:    email.Subject,
+		Tag:        strings.Join(email.Tags, ","),
 		TextBody:   email.PlainTextContent,
+		To:         strings.Join(formatAddresses(env.to), ","),
+		TrackLinks: postmarkTrackLinksNone,
 		TrackOpens: email.TrackOpens,
-		TrackLinks: "None",
 	}
-
-	// Set the link tracking
 	if email.TrackClicks {
-		postmarkEmail.TrackLinks = "HtmlAndText"
+		postmarkEmail.TrackLinks = postmarkTrackLinksAll
+	}
+	if env.replyTo != nil {
+		postmarkEmail.ReplyTo = formatAddress(env.replyTo)
+	}
+	for _, h := range emailHeaders(email) {
+		postmarkEmail.Headers = append(postmarkEmail.Headers, postmark.Header{Name: h.name, Value: h.value})
 	}
 
-	// Warn about features that are set but not available
-	if email.AutoText {
-		log.Printf("warning: auto text is enabled, but Postmark does not offer this feature")
-	}
-
-	// Set the "from" name if given (RFC 5322: "Name <address>")
-	if len(email.FromName) > 0 {
-		postmarkEmail.From = email.FromName + " <" + email.FromAddress + ">"
-	}
-
-	// Convert recipients to comma separated
-	postmarkEmail.To = strings.Join(email.Recipients, ",")
-
-	// Convert tags to comma separated
-	postmarkEmail.Tag = strings.Join(email.Tags, ",")
-
-	// CC addresses
-	if len(email.RecipientsCc) > 0 {
-		postmarkEmail.Cc = strings.Join(email.RecipientsCc, ",")
-	}
-
-	// BCC addresses
-	if len(email.RecipientsBcc) > 0 {
-		postmarkEmail.Bcc = strings.Join(email.RecipientsBcc, ",")
-	}
-
-	// Convert attachments to Postmark format
-	postmarkEmail.Attachments = make([]postmark.Attachment, 0, len(email.Attachments))
-	for _, attachment := range email.Attachments {
-
-		// Create the postmark attachment
+	// Convert attachments to Postmark format (inline attachments use a cid: content id)
+	postmarkEmail.Attachments = make([]postmark.Attachment, 0, len(attachments))
+	for _, att := range attachments {
 		postmarkAttachment := postmark.Attachment{
-			ContentType: attachment.FileType,
-			Name:        attachment.FileName,
+			Content:     base64.StdEncoding.EncodeToString(att.content),
+			ContentType: att.contentType,
+			Name:        att.name,
 		}
-
-		// Encode the attachment contents as base64
-		if postmarkAttachment.Content, err = encodeAttachmentBase64(attachment.FileReader); err != nil {
-			return err
+		if att.inline() {
+			postmarkAttachment.ContentID = "cid:" + att.contentID
 		}
-
-		// Add to the email
 		postmarkEmail.Attachments = append(postmarkEmail.Attachments, postmarkAttachment)
 	}
 
-	// Add importance
-	if email.Important {
-		postmarkEmail.Headers = append(
-			postmarkEmail.Headers,
-			postmark.Header{Name: headerXPriority, Value: headerXPriorityValue},
-			postmark.Header{Name: headerXMSMailPriority, Value: headerHighValue},
-			postmark.Header{Name: headerImportance, Value: headerHighValue},
-		)
-	}
+	applyProviderOptions[PostmarkOption](email.ProviderOptions, &postmarkEmail)
 
-	// Send the email
 	var resp postmark.EmailResponse
-	if resp, err = client.SendEmail(ctx, postmarkEmail); err != nil {
-		return err
+	if resp, err = p.client.SendEmail(ctx, postmarkEmail); err != nil {
+		return nil, fmt.Errorf("%w: %w", ErrPostmarkError, err)
 	}
-
-	// Check the response from Postmark
 	if resp.ErrorCode > 0 {
-		err = fmt.Errorf("error from postmark: %s error code: %d: %w", resp.Message, resp.ErrorCode, ErrPostmarkError)
+		return nil, fmt.Errorf("error from postmark: %s error code: %d: %w", resp.Message, resp.ErrorCode, ErrPostmarkError)
 	}
 
-	return err
+	return &SendResult{MessageID: resp.MessageID, Response: resp}, nil
+}
+
+// SupportsFeature reports whether Postmark supports the feature
+func (p *PostmarkProvider) SupportsFeature(feature Feature) bool {
+	return supportsFeature([]Feature{FeatureMetadata, FeatureTags, FeatureTrackClicks, FeatureTrackOpens}, feature)
 }

@@ -2,199 +2,235 @@ package gomail
 
 import (
 	"context"
+	"encoding/json"
+	"errors"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/sendgrid/rest"
-	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	sendgrid "github.com/sendgrid/sendgrid-go"
+	sgmail "github.com/sendgrid/sendgrid-go/helpers/mail"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// mockSendGridInterface is a mocking interface for SendGrid; it routes by the
-// primary recipient address (mirroring the other providers' mocks)
-type mockSendGridInterface struct{}
+// errSendGridTransport is a test-only transport error
+var errSendGridTransport = errors.New("dial tcp: no such host")
 
-// SendWithContext is for mocking
-func (m *mockSendGridInterface) SendWithContext(_ context.Context, email *mail.SGMailV3) (*rest.Response, error) {
-	// Determine the primary recipient
-	var to string
-	if len(email.Personalizations) > 0 && len(email.Personalizations[0].To) > 0 {
-		to = email.Personalizations[0].To[0].Address
-	}
-
-	switch to {
-	// Success (accepted)
-	case testRecipientSuccess:
-		return &rest.Response{StatusCode: http.StatusAccepted}, nil
-
-	// Server error status code
-	case "test@errorcode.com":
-		return &rest.Response{StatusCode: http.StatusInternalServerError}, nil
-
-	// Invalid token status code
-	case "test@badtoken.com":
-		return &rest.Response{StatusCode: http.StatusUnauthorized}, nil
-
-	// Transport error
-	case "test@badhostname.com":
-		return nil, ErrBadHostname
-	}
-
-	// Default is success
-	return &rest.Response{StatusCode: http.StatusAccepted}, nil
+// fakeSendGridClient records the last message sent
+type fakeSendGridClient struct {
+	err      error
+	message  *sgmail.SGMailV3
+	response *rest.Response
 }
 
-// newMockSendGridClient will create a new mock client for SendGrid
-func newMockSendGridClient() sendGridInterface {
-	return &mockSendGridInterface{}
+// SendWithContext records the message and returns the configured outcome
+func (f *fakeSendGridClient) SendWithContext(_ context.Context, email *sgmail.SGMailV3) (*rest.Response, error) {
+	f.message = email
+	return f.response, f.err
 }
 
-// capturingSendGridInterface records the last message passed to SendWithContext
-// so tests can assert on the built *mail.SGMailV3 payload
-type capturingSendGridInterface struct {
-	lastMessage *mail.SGMailV3
+// newFakeSendGridClient returns a fake SendGrid client that succeeds
+func newFakeSendGridClient() *fakeSendGridClient {
+	return &fakeSendGridClient{response: &rest.Response{
+		StatusCode: http.StatusAccepted,
+		Headers:    map[string][]string{"X-Message-Id": {testMessageID}},
+	}}
 }
 
-// SendWithContext captures the message and returns a successful response
-func (m *capturingSendGridInterface) SendWithContext(_ context.Context, email *mail.SGMailV3) (*rest.Response, error) {
-	m.lastMessage = email
-	return &rest.Response{StatusCode: http.StatusAccepted}, nil
-}
-
-// TestNewSendGridClient tests creating a new SendGrid client
-func TestNewSendGridClient(t *testing.T) {
+// TestSendGridProviderSend checks the SendGrid message
+func TestSendGridProviderSend(t *testing.T) {
 	t.Parallel()
 
-	client := newSendGridClient("test-api-key")
-	require.NotNil(t, client)
-}
-
-// TestSendViaSendGrid will test the sendViaSendGrid() method
-func TestSendViaSendGrid(t *testing.T) {
-	t.Parallel()
-
-	// Setup mock client and a ready-to-send email
-	client := newMockSendGridClient()
+	client := newFakeSendGridClient()
 	email := newProviderTestEmail(t)
+	email.Recipients = []string{"To Person <to@example.com>", "dup@example.com"}
+	email.RecipientsCc = []string{testCcAddress, "dup@example.com"}
+	email.RecipientsBcc = []string{testBccAddress, "to@example.com"}
+	email.ReplyToAddress = "Support <support@example.com>"
+	email.Tags = []string{"welcome"}
+	email.Metadata = map[string]string{"user": "42"}
+	email.SendAt = time.Unix(1893456000, 0)
+	email.SetHeader("X-Campaign", "spring")
+	email.AddInlineAttachment("logo.png", "image/png", "logo", []byte("png"))
 
-	// Create the list of tests
-	cases := []providerSendCase{
-		{"successful send", testRecipientSuccess, false},
-		{"error code failure", "test@errorcode.com", true},
-		{"invalid token error", "test@badtoken.com", true},
-		{"bad hostname transport error", "test@badhostname.com", true},
+	result, err := NewSendGridProvider(client).Send(context.Background(), email)
+	require.NoError(t, err)
+	assert.Equal(t, testMessageID, result.MessageID)
+	assert.Equal(t, client.response, result.Response)
+
+	message := client.message
+	assert.Equal(t, &sgmail.Email{Name: testFromNameEmail, Address: "no-reply@example.com"}, message.From)
+	assert.Equal(t, &sgmail.Email{Name: "Support", Address: "support@example.com"}, message.ReplyTo)
+	assert.Equal(t, "Test Subject", message.Subject)
+
+	// Duplicate recipients are removed (SendGrid rejects them)
+	require.Len(t, message.Personalizations, 1)
+	personalization := message.Personalizations[0]
+	assert.Equal(t, []*sgmail.Email{{Name: "To Person", Address: "to@example.com"}, {Address: "dup@example.com"}}, personalization.To)
+	assert.Equal(t, []*sgmail.Email{{Address: testCcAddress}}, personalization.CC)
+	assert.Equal(t, []*sgmail.Email{{Address: testBccAddress}}, personalization.BCC)
+
+	require.Len(t, message.Content, 2)
+	assert.Equal(t, mimeTypePlain, message.Content[0].Type)
+	assert.Equal(t, mimeTypeHTML, message.Content[1].Type)
+	assert.Equal(t, []string{"welcome"}, message.Categories)
+	assert.Equal(t, map[string]string{"user": "42"}, message.CustomArgs)
+	assert.Equal(t, 1893456000, message.SendAt)
+	assert.Equal(t, "spring", message.Headers["X-Campaign"])
+	assert.Equal(t, headerXPriorityValue, message.Headers[headerXPriority])
+	assert.True(t, *message.TrackingSettings.ClickTracking.Enable)
+	assert.True(t, *message.TrackingSettings.OpenTracking.Enable)
+
+	require.Len(t, message.Attachments, 2)
+	assert.Equal(t, "attachment", message.Attachments[0].Disposition)
+	assert.Equal(t, "test-attachment-file.txt", message.Attachments[0].Filename)
+	assert.Equal(t, "inline", message.Attachments[1].Disposition)
+	assert.Equal(t, "logo", message.Attachments[1].ContentID)
+}
+
+// TestSendGridProviderTrackingDisabled checks tracking is explicitly disabled
+func TestSendGridProviderTrackingDisabled(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeSendGridClient()
+	_, err := NewSendGridProvider(client).Send(context.Background(), newValidEmail())
+	require.NoError(t, err)
+
+	tracking := client.message.TrackingSettings
+	require.NotNil(t, tracking)
+	assert.False(t, *tracking.ClickTracking.Enable)
+	assert.False(t, *tracking.ClickTracking.EnableText)
+	assert.False(t, *tracking.OpenTracking.Enable)
+	assert.Nil(t, client.message.ReplyTo)
+	assert.Zero(t, client.message.SendAt)
+	assert.Empty(t, client.message.Categories)
+}
+
+// TestSendGridProviderOptions checks that SendGridOption customizes the message
+func TestSendGridProviderOptions(t *testing.T) {
+	t.Parallel()
+
+	client := newFakeSendGridClient()
+	email := newValidEmail().With(SendGridOption(func(message *sgmail.SGMailV3) { message.SetTemplateID("d-123") }))
+
+	_, err := NewSendGridProvider(client).Send(context.Background(), email)
+	require.NoError(t, err)
+	assert.Equal(t, "d-123", client.message.TemplateID)
+}
+
+// TestSendGridProviderErrors checks the SendGrid failure paths
+func TestSendGridProviderErrors(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		client   *fakeSendGridClient
+		contains string
+	}{
+		{"transport error", &fakeSendGridClient{err: errSendGridTransport}, "no such host"},
+		{"nil response", &fakeSendGridClient{}, "empty response"},
+		{"bad request", &fakeSendGridClient{response: &rest.Response{StatusCode: http.StatusBadRequest, Body: `{"errors":[]}`}}, "status code 400"},
+		{"server error", &fakeSendGridClient{response: &rest.Response{StatusCode: http.StatusInternalServerError}}, "status code 500"},
+		{"informational status", &fakeSendGridClient{response: &rest.Response{StatusCode: http.StatusContinue}}, "status code 100"},
 	}
 
-	// Loop tests
-	runProviderSendCases(t, email, cases, func() error {
-		return sendViaSendGrid(context.Background(), client, email)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := NewSendGridProvider(test.client).Send(context.Background(), newValidEmail())
+			require.ErrorIs(t, err, ErrSendGridError)
+			assert.Contains(t, err.Error(), test.contains)
+		})
+	}
+
+	t.Run("invalid reply-to", func(t *testing.T) {
+		email := newValidEmail()
+		email.ReplyToAddress = "nope"
+		_, err := NewSendGridProvider(newFakeSendGridClient()).Send(context.Background(), email)
+		require.ErrorIs(t, err, ErrInvalidReplyToAddress)
+	})
+
+	t.Run("attachment read error", func(t *testing.T) {
+		email := newValidEmail()
+		email.AddAttachment(testFileName, "text/plain", errReader{})
+		_, err := NewSendGridProvider(newFakeSendGridClient()).Send(context.Background(), email)
+		require.Error(t, err)
 	})
 }
 
-// TestSendViaSendGrid_MessageBuild confirms the *mail.SGMailV3 payload is built
-// correctly: sender, subject, recipients, plain-before-html content ordering,
-// reply-to, categories, importance headers, native tracking, and attachments
-func TestSendViaSendGrid_MessageBuild(t *testing.T) {
+// TestSendGridProviderSupportsFeature checks the SendGrid feature support
+func TestSendGridProviderSupportsFeature(t *testing.T) {
 	t.Parallel()
 
-	email := newProviderTestEmail(t)
-	email.Subject = "Test subject"
-	email.Recipients = []string{"to@domain.com"}
-	email.RecipientsCc = []string{"cc@domain.com"}
-	email.RecipientsBcc = []string{"bcc@domain.com"}
-	email.ReplyToAddress = "reply@domain.com"
-	email.Tags = []string{"tag1", "tag2"}
-
-	capture := &capturingSendGridInterface{}
-	err := sendViaSendGrid(context.Background(), capture, email)
-	require.NoError(t, err)
-	require.NotNil(t, capture.lastMessage)
-
-	msg := capture.lastMessage
-
-	// From
-	require.NotNil(t, msg.From)
-	assert.Equal(t, testFromNameEmail, msg.From.Name)
-	assert.Equal(t, testUsernameEmail+"@"+testDomainEmail, msg.From.Address)
-
-	// Subject
-	assert.Equal(t, "Test subject", msg.Subject)
-
-	// Recipients (single personalization with to/cc/bcc)
-	require.Len(t, msg.Personalizations, 1)
-	p := msg.Personalizations[0]
-	require.Len(t, p.To, 1)
-	assert.Equal(t, "to@domain.com", p.To[0].Address)
-	require.Len(t, p.CC, 1)
-	assert.Equal(t, "cc@domain.com", p.CC[0].Address)
-	require.Len(t, p.BCC, 1)
-	assert.Equal(t, "bcc@domain.com", p.BCC[0].Address)
-
-	// Content ordering: plain text must come before html
-	require.Len(t, msg.Content, 2)
-	assert.Equal(t, "text/plain", msg.Content[0].Type)
-	assert.Equal(t, "text/html", msg.Content[1].Type)
-
-	// Reply-to
-	require.NotNil(t, msg.ReplyTo)
-	assert.Equal(t, "reply@domain.com", msg.ReplyTo.Address)
-
-	// Categories from tags
-	assert.Equal(t, []string{"tag1", "tag2"}, msg.Categories)
-
-	// Native tracking populated (TrackClicks + TrackOpens both on via defaults)
-	require.NotNil(t, msg.TrackingSettings)
-	require.NotNil(t, msg.TrackingSettings.ClickTracking)
-	require.NotNil(t, msg.TrackingSettings.ClickTracking.Enable)
-	assert.True(t, *msg.TrackingSettings.ClickTracking.Enable)
-	require.NotNil(t, msg.TrackingSettings.OpenTracking)
-	require.NotNil(t, msg.TrackingSettings.OpenTracking.Enable)
-	assert.True(t, *msg.TrackingSettings.OpenTracking.Enable)
-
-	// Importance headers
-	assert.Equal(t, headerXPriorityValue, msg.Headers[headerXPriority])
-	assert.Equal(t, headerHighValue, msg.Headers[headerXMSMailPriority])
-	assert.Equal(t, headerHighValue, msg.Headers[headerImportance])
-
-	// Attachment (base64 encoded)
-	require.Len(t, msg.Attachments, 1)
-	assert.Equal(t, "test-attachment-file.txt", msg.Attachments[0].Filename)
-	assert.Equal(t, "text/plain", msg.Attachments[0].Type)
-	assert.Equal(t, "attachment", msg.Attachments[0].Disposition)
-	assert.NotEmpty(t, msg.Attachments[0].Content)
-}
-
-// TestSendViaSendGrid_AttachmentError confirms an attachment whose reader fails
-// surfaces the read error before sending
-func TestSendViaSendGrid_AttachmentError(t *testing.T) {
-	t.Parallel()
-
-	email := newProviderTestEmail(t)
-	email.Recipients = []string{testRecipientSuccess}
-	email.Attachments = []Attachment{
-		{FileName: "bad.txt", FileType: "text/plain", FileReader: errReader{}},
+	provider := NewSendGridProvider(nil)
+	for _, feature := range []Feature{FeatureMetadata, FeatureSendAt, FeatureTags, FeatureTrackClicks, FeatureTrackOpens} {
+		assert.True(t, provider.SupportsFeature(feature), feature)
 	}
-
-	capture := &capturingSendGridInterface{}
-	err := sendViaSendGrid(context.Background(), capture, email)
-	require.ErrorIs(t, err, ErrBadHostname)
-	require.Nil(t, capture.lastMessage, "send should not be attempted when an attachment fails to encode")
+	for _, feature := range []Feature{FeatureAutoText, FeatureIdempotencyKey, FeatureViewContentLink} {
+		assert.False(t, provider.SupportsFeature(feature), feature)
+	}
 }
 
-// TestSendViaSendGrid_NoTracking confirms tracking settings are omitted when
-// neither open nor click tracking is enabled
-func TestSendViaSendGrid_NoTracking(t *testing.T) {
+// TestNewSendGridProviderWrapsSDKClient checks the SDK client is wrapped for concurrent use
+func TestNewSendGridProviderWrapsSDKClient(t *testing.T) {
 	t.Parallel()
 
-	email := newProviderTestEmail(t)
-	email.Recipients = []string{"to@domain.com"}
-	email.TrackClicks = false
-	email.TrackOpens = false
+	provider := NewSendGridProvider(sendgrid.NewSendClient("key"))
+	wrapped, ok := provider.client.(*sendGridRequestClient)
+	require.True(t, ok)
+	assert.Equal(t, "Bearer key", wrapped.request.Headers["Authorization"])
 
-	capture := &capturingSendGridInterface{}
-	err := sendViaSendGrid(context.Background(), capture, email)
-	require.NoError(t, err)
-	require.NotNil(t, capture.lastMessage)
-	assert.Nil(t, capture.lastMessage.TrackingSettings)
+	custom := newFakeSendGridClient()
+	assert.Same(t, custom, NewSendGridProvider(custom).client)
+}
+
+// TestSendGridProviderConcurrentSends sends concurrently through the real SDK
+// and checks every request carries its own body (the SDK client stores the
+// body on itself, so a shared client would mix up concurrent emails)
+func TestSendGridProviderConcurrentSends(t *testing.T) {
+	t.Parallel()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Subject string `json:"subject"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		// Echo the subject back as the message id
+		w.Header().Set("X-Message-Id", body.Subject)
+		w.WriteHeader(http.StatusAccepted)
+	}))
+	t.Cleanup(server.Close)
+
+	client := sendgrid.NewSendClient("key")
+	client.BaseURL = server.URL + "/v3/mail/send"
+	provider := NewSendGridProvider(client)
+
+	const sends = 20
+	var wg sync.WaitGroup
+	errs := make(chan error, sends)
+	for i := range sends {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			email := newValidEmail()
+			email.Subject = "subject-" + strconv.Itoa(i)
+			result, err := provider.Send(context.Background(), email)
+			if err == nil && result.MessageID != email.Subject {
+				err = errors.New("got the body of another email: " + result.MessageID) //nolint:err113 // test-only error
+			}
+			errs <- err
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		require.NoError(t, err)
+	}
 }

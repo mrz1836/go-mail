@@ -16,6 +16,7 @@ import (
 	"bytes"
 	"html/template"
 	"io"
+	"net/mail"
 	"regexp"
 	"strings"
 	"testing"
@@ -163,6 +164,7 @@ func FuzzValidateEmail(f *testing.F) {
 
 func createEmailWithRecipients(recipients, subject, plainContent, htmlContent string) *Email {
 	email := &Email{
+		FromAddress:      testUsernameEmail + "@" + testDomainEmail,
 		Subject:          subject,
 		PlainTextContent: plainContent,
 		HTMLContent:      htmlContent,
@@ -211,57 +213,117 @@ func validateEmailRules(t *testing.T, service *MailService, email *Email, subjec
 		return
 	}
 
-	if err == nil {
-		require.NotEmpty(t, subject, "valid email should have subject")
-		require.True(t, len(plainContent) > 0 || len(htmlContent) > 0, "valid email should have content")
-		require.NotEmpty(t, email.Recipients, "valid email should have recipients")
+	for _, recipient := range email.Recipients {
+		if _, parseErr := mail.ParseAddress(recipient); parseErr != nil {
+			require.ErrorIs(t, err, ErrInvalidRecipient, "an unparsable recipient should return ErrInvalidRecipient")
+			return
+		}
 	}
+
+	require.NoError(t, err, "a valid email should pass validation")
 }
 
-// FuzzEmailDomainExtraction tests domain extraction from email addresses in Mandrill
-func FuzzEmailDomainExtraction(f *testing.F) {
-	// Seed corpus with various email address formats
-	f.Add("user@domain.com")
-	f.Add("@domain.com")
-	f.Add("user@")
-	f.Add("user")
-	f.Add("")
-	f.Add("user@domain")
-	f.Add("user@domain.co.uk")
-	f.Add("user.name@sub.domain.com")
-	f.Add("user+tag@domain.com")
-	f.Add("user@domain@extra")
-	f.Add("@")
-	f.Add("@@")
-	f.Add("user@@domain.com")
+// FuzzParseEnvelope tests address parsing never panics and always produces
+// safe, de-duplicated addresses
+func FuzzParseEnvelope(f *testing.F) {
+	f.Add("user@domain.com", "Name <to@domain.com>", "cc@domain.com", "reply@domain.com")
+	f.Add("@domain.com", "user@", "user", "")
+	f.Add("user@domain@extra", "a@b.com, c@d.com", "", "")
+	f.Add("user@domain.com", "a@b.com\r\nBcc: evil@x.com", "A@B.COM", "\"quoted\"@domain.com")
+	f.Add("Jörg <j@domain.com>", "=?utf-8?q?x?= <x@domain.com>", "", "reply")
 
-	f.Fuzz(func(t *testing.T, emailAddress string) {
-		defer func() {
-			if r := recover(); r != nil {
-				t.Errorf("email domain extraction panicked with input %q: %v", emailAddress, r)
-			}
-		}()
-
-		// Simulate the domain extraction logic from sendViaMandrill
-		emailParts := strings.Split(emailAddress, "@")
-
-		// This should never panic
-		require.NotNil(t, emailParts)
-
-		// Test the validation logic
-		if len(emailParts) <= 1 {
-			// Should be considered invalid - no @ or no domain part
-			require.True(t, len(emailParts) == 1 || (len(emailParts) > 1 && emailParts[1] == ""))
+	f.Fuzz(func(t *testing.T, from, to, cc, replyTo string) {
+		email := &Email{FromAddress: from, Recipients: []string{to}, RecipientsCc: []string{cc}, ReplyToAddress: replyTo}
+		env, err := parseEnvelope(email)
+		if err != nil {
 			return
 		}
 
-		if len(emailParts) > 1 && emailParts[1] != "" {
-			// Should have a valid domain part
-			domain := emailParts[1]
-			require.NotEmpty(t, domain, "domain should not be empty if extraction succeeds")
+		require.NotEmpty(t, addressDomain(env.from.Address), "a parsed sender must have a domain")
 
-			// Domain should not contain additional @ symbols (basic validation)
-			require.NotContains(t, domain, "@", "domain part should not contain @ symbols")
+		seen := make(map[string]struct{})
+		for _, addr := range env.allRecipients() {
+			require.NotContains(t, addr, "\r")
+			require.NotContains(t, addr, "\n")
+			key := strings.ToLower(addr)
+			_, dup := seen[key]
+			require.False(t, dup, "recipients must be unique")
+			seen[key] = struct{}{}
+		}
+
+		for _, addr := range env.to {
+			reparsed, parseErr := mail.ParseAddress(formatAddress(addr))
+			require.NoError(t, parseErr, "a formatted address must parse again")
+			require.Equal(t, addr.Address, reparsed.Address)
+		}
+	})
+}
+
+// FuzzBuildMIME tests that no field can inject headers or disclose Bcc recipients
+func FuzzBuildMIME(f *testing.F) {
+	f.Add("Subject", "Sender", "Text", "<p>HTML</p>", "file.txt", "X-Custom value")
+	f.Add("Hi\r\nBcc: evil@x.com", "Name\r\nX-Evil: 1", "body\r\n.\r\n", "", "a\"b.txt", "v\r\nX-Evil: 2")
+	f.Add("Héllo wörld "+strings.Repeat("long ", 40), "Jörg, Inc.", "", "<b>x</b>", "données.pdf", "")
+
+	f.Fuzz(func(t *testing.T, subject, fromName, text, html, fileName, headerValue string) {
+		email := &Email{
+			FromAddress:      "sender@example.com",
+			FromName:         fromName,
+			HTMLContent:      html,
+			PlainTextContent: text,
+			Recipients:       []string{"to@example.com"},
+			RecipientsBcc:    []string{"hidden@example.com"},
+			Subject:          subject,
+		}
+		if len(text) == 0 && len(html) == 0 {
+			email.PlainTextContent = "fallback"
+		}
+		email.AddAttachmentBytes(stripLineBreaks(fileName), "", []byte(text))
+		if validateHeaders(map[string]string{"X-Custom": headerValue}) == nil {
+			email.SetHeader("X-Custom", headerValue)
+		}
+
+		env, err := parseEnvelope(email)
+		require.NoError(t, err)
+		attachments, err := readAttachments(email)
+		require.NoError(t, err)
+		raw, err := buildMIME(email, env, attachments, "<id@example.com>", testMIMEDate())
+		require.NoError(t, err)
+
+		require.NotContains(t, string(raw), "hidden@example.com", "bcc recipients must never be written")
+
+		msg, err := mail.ReadMessage(bytes.NewReader(raw))
+		require.NoError(t, err, "the message must parse")
+
+		allowed := map[string]bool{
+			"From": true, "To": true, "Subject": true, "Date": true, "Message-Id": true,
+			"Mime-Version": true, "Content-Type": true, "Content-Transfer-Encoding": true, "X-Custom": true,
+		}
+		for name := range msg.Header {
+			require.True(t, allowed[name], "unexpected header %q", name)
+		}
+	})
+}
+
+// FuzzFoldHeader tests that folding only ever inserts CRLF before whitespace
+func FuzzFoldHeader(f *testing.F) {
+	f.Add("Subject: short")
+	f.Add("Subject: " + strings.Repeat("word ", 40))
+	f.Add("X: " + strings.Repeat("a", 200))
+	f.Add("X: a" + strings.Repeat(" ", 100) + "b")
+
+	f.Fuzz(func(t *testing.T, line string) {
+		if strings.ContainsAny(line, "\r\n") {
+			return
+		}
+
+		folded := foldHeader(line)
+		require.Equal(t, line, strings.ReplaceAll(folded, "\r\n", ""), "unfolding must restore the line")
+
+		for i, part := range strings.Split(folded, "\r\n") {
+			if i > 0 {
+				require.True(t, part[0] == ' ' || part[0] == '\t', "a folded line must start with whitespace")
+			}
 		}
 	})
 }
@@ -361,7 +423,7 @@ func FuzzMailServiceStartup(f *testing.F) {
 		service := createMailService(fromUsername, fromDomain, mandrillKey, awsKey, awsSecret, awsRegion, postmarkToken, smtpHost, smtpUser, smtpPass, smtpPort)
 		err := service.StartUp()
 
-		validateMailServiceStartup(t, service, fromUsername, fromDomain, mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost, smtpUser, smtpPass, err)
+		validateMailServiceStartup(t, service, fromUsername, fromDomain, mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost, err)
 	})
 }
 
@@ -381,7 +443,7 @@ func createMailService(fromUsername, fromDomain, mandrillKey, awsKey, awsSecret,
 	}
 }
 
-func validateMailServiceStartup(t *testing.T, service *MailService, fromUsername, fromDomain, mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost, smtpUser, smtpPass string, err error) {
+func validateMailServiceStartup(t *testing.T, service *MailService, fromUsername, fromDomain, mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost string, err error) {
 	if fromUsername == "" {
 		require.ErrorIs(t, err, ErrMissingFromUsername, "empty FromUsername should return ErrMissingFromUsername")
 		return
@@ -392,7 +454,7 @@ func validateMailServiceStartup(t *testing.T, service *MailService, fromUsername
 		return
 	}
 
-	hasValidProvider := checkValidProvider(mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost, smtpUser, smtpPass)
+	hasValidProvider := checkValidProvider(mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost)
 	if !hasValidProvider {
 		require.ErrorIs(t, err, ErrNoServiceProvider, "no valid provider should return ErrNoServiceProvider")
 		return
@@ -406,7 +468,7 @@ func validateMailServiceStartup(t *testing.T, service *MailService, fromUsername
 	}
 }
 
-func checkValidProvider(mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost, smtpUser, smtpPass string) bool {
+func checkValidProvider(mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost string) bool {
 	if mandrillKey != "" {
 		return true
 	}
@@ -416,7 +478,7 @@ func checkValidProvider(mandrillKey, awsKey, awsSecret, postmarkToken, smtpHost,
 	if postmarkToken != "" {
 		return true
 	}
-	if smtpHost != "" && smtpUser != "" && smtpPass != "" {
+	if smtpHost != "" {
 		return true
 	}
 	return false
@@ -508,29 +570,31 @@ func FuzzAttachmentProcessing(f *testing.F) {
 	})
 }
 
-// resendTagPattern is the tag name format Resend accepts
-var resendTagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
+// tagPattern is the tag name/value format SES and Resend accept
+var tagPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,256}$`)
 
-// FuzzResendTags tests that resendTags always produces valid, unique Resend tags
-func FuzzResendTags(f *testing.F) {
-	// Seed corpus with valid, invalid, empty, and duplicate tags
-	f.Add("admin_alert", "Signup-2")
-	f.Add("admin alert!", "admin_alert_")
-	f.Add("", "tag")
-	f.Add("café", "tag🚀")
-	f.Add(strings.Repeat("a", 300), strings.Repeat("a", 257))
+// FuzzNameValueTags tests that tags and metadata always produce valid, unique tags
+func FuzzNameValueTags(f *testing.F) {
+	f.Add("admin_alert", "Signup-2", "user id", "42")
+	f.Add("admin alert!", "admin_alert_", "admin_alert", "x")
+	f.Add("", "tag", "", "")
+	f.Add("café", "tag🚀", "k🚀", "v🚀")
+	f.Add(strings.Repeat("a", 300), strings.Repeat("a", 257), strings.Repeat("k", 300), strings.Repeat("v", 300))
 
-	f.Fuzz(func(t *testing.T, tag1, tag2 string) {
-		tags := resendTags([]string{tag1, tag2, tag1})
+	f.Fuzz(func(t *testing.T, tag1, tag2, key, value string) {
+		var metadata map[string]string
+		if len(key) > 0 && len(value) > 0 {
+			metadata = map[string]string{key: value}
+		}
 
-		seen := make(map[string]struct{}, len(tags))
-		for _, tag := range tags {
-			require.Regexp(t, resendTagPattern, tag.Name, "tag name must be valid for Resend")
-			require.Equal(t, resendTagValue, tag.Value)
+		seen := make(map[string]struct{})
+		for _, tag := range nameValueTags([]string{tag1, tag2, tag1}, metadata) {
+			require.Regexp(t, tagPattern, tag.name, "tag name must be valid")
+			require.Regexp(t, tagPattern, tag.value, "tag value must be valid")
 
-			_, dup := seen[tag.Name]
+			_, dup := seen[tag.name]
 			require.False(t, dup, "tag names must be unique")
-			seen[tag.Name] = struct{}{}
+			seen[tag.name] = struct{}{}
 		}
 	})
 }
