@@ -31,6 +31,9 @@ func main() {
 	// Run the SendGrid example
 	// sendGridExample()
 
+	// Run the Resend example
+	// resendExample()
+
 	// Example using ALL options available
 	// allOptionsExample()
 }
@@ -315,6 +318,55 @@ func sendGridExample() { //nolint:unused // this is an example function
 	log.Printf("email sent!")
 }
 
+// resendExample shows an example using Resend as the provider
+func resendExample() { //nolint:unused // this is an example function
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = "No Reply"
+	mail.FromUsername = "no-reply"
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN") // must be a domain verified in Resend
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.ResendAPIKey = os.Getenv("EMAIL_RESEND_API_KEY")
+	if len(mail.ResendAPIKey) == 0 {
+		log.Fatal("missing env: EMAIL_RESEND_API_KEY")
+	}
+	provider := gomail.Resend
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Resend"
+	email.Tags = []string{"example"}
+
+	// Resend configures open & click tracking per domain (in the Resend dashboard), not per email
+	email.TrackClicks = false
+	email.TrackOpens = false
+
+	// Send the email
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
 // allOptionsExample is using the most number of options/features
 func allOptionsExample() { //nolint:unused // this is an example function
 
@@ -343,7 +395,10 @@ func allOptionsExample() { //nolint:unused // this is an example function
 	// SendGrid
 	mail.SendGridAPIKey = os.Getenv("EMAIL_SENDGRID_API_KEY") // SG.xxxx...
 
-	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark SendGrid
+	// Resend
+	mail.ResendAPIKey = os.Getenv("EMAIL_RESEND_API_KEY") // re_xxxx...
+
+	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark SendGrid Resend
 
 	// Start the service
 	err := mail.StartUp()
