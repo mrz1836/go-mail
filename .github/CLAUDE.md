@@ -10,16 +10,26 @@ Multi-provider email library for Go with support for AWS SES, Mandrill, Postmark
 ### Key Structs
 - `MailService`: Main configuration struct managing providers and settings
 - `Email`: Email data structure with attachments, templates, tracking options
-- `Attachment`: File attachment with name, type, and reader
+- `Attachment`: File attachment with name, type, and content (bytes or a reader; `ContentID` makes it inline)
+- `Provider`: Interface every service implements (`Send(ctx, *Email) (*SendResult, error)`)
+- `SendResult`: Provider, message id, and native response returned by `MailService.Send`
 
 ### Provider Pattern
-All providers implement interfaces for testability:
+Every service is a `Provider` registered on the `MailService` (`StartUp` registers
+the built-ins from their credentials; `RegisterProvider` adds custom ones):
 ```go
-// Pattern used throughout
-type providerInterface interface {
-    SendEmail(...) error
+type Provider interface {
+    Send(ctx context.Context, email *Email) (*SendResult, error)
 }
 ```
+
+Built-in providers wrap a small exported client interface (`SESClient`,
+`MandrillClient`, `PostmarkClient`, `SendGridClient`, `ResendClient`) that the
+SDK client satisfies, so tests use fakes. Each also implements
+`FeatureSupporter` and applies its typed `ProviderOption` (ie: `PostmarkOption`).
+
+Shared pieces: `message.go` (address parsing, headers, attachments, tags),
+`mime.go` (MIME builder used by SES and SMTP; never writes a Bcc header).
 
 Provider files: `aws_ses.go`, `mandrill.go`, `postmark.go`, `resend.go`, `sendgrid.go`, `smtp.go`
 
@@ -91,12 +101,12 @@ type serviceInterface interface {
 ## 🚀 Common Tasks
 
 ### Adding Email Provider
-1. Create `provider.go` with interface and implementation
-2. Add to `ServiceProvider` enum in `config.go`
-3. Update `StartUp()` method to initialize provider
-4. Add case in `SendEmail()` switch statement
-5. Create `provider_test.go` with mock interface
-6. Add example in `examples/examples.go`
+1. Create `<provider>.go` with a client interface, a `<Name>Provider` type (`Send`, `SupportsFeature`) and a `<Name>Option` type
+2. Add to `ServiceProvider` enum (and `String()`) in `config.go`
+3. Add a loader to `loadProviders()` in `config.go`
+4. Implement `ServiceProvider()` for the option in `provider.go`
+5. Create `<provider>_test.go` with a fake client
+6. Add example in `examples/examples.go` and a row in the README feature table
 
 ### Modifying Email Struct
 - Check memory alignment comments
@@ -134,7 +144,7 @@ if email.TrackClicks {
 - `postmark` client library
 - `resend-go/v4` for Resend
 - `sendgrid-go` for SendGrid
-- `mailyak` for SMTP/raw email
+- Standard library (`net/smtp`, `mime/multipart`) for SMTP and raw MIME messages
 - `douceur/inliner` for CSS inlining
 
 ## ⚠️ Critical Guidelines
