@@ -60,7 +60,8 @@ type fakeSMTPServer struct {
 	listener net.Listener
 	sessions []fakeSMTPSession
 	cfg      fakeSMTPConfig
-	wg       sync.WaitGroup
+	wg       sync.WaitGroup // tracks the accept loop and every connection handler
+	conns    sync.WaitGroup // tracks connection handlers only
 	mu       sync.Mutex
 }
 
@@ -103,10 +104,20 @@ func listenerPort(listener net.Listener) int {
 func (s *fakeSMTPServer) session(t *testing.T) fakeSMTPSession {
 	t.Helper()
 
+	sessions := s.recorded()
+	require.Len(t, sessions, 1)
+	return sessions[0]
+}
+
+// recorded waits for every accepted connection to finish and returns the
+// recorded sessions. A client can see the final reply (e.g. 221 to QUIT)
+// before the handler records its session, so reading without waiting races.
+func (s *fakeSMTPServer) recorded() []fakeSMTPSession {
+	s.conns.Wait()
+
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	require.Len(t, s.sessions, 1)
-	return s.sessions[0]
+	return append([]fakeSMTPSession(nil), s.sessions...)
 }
 
 // serve accepts connections until the listener is closed
@@ -118,8 +129,10 @@ func (s *fakeSMTPServer) serve() {
 			return
 		}
 		s.wg.Add(1)
+		s.conns.Add(1)
 		go func() {
 			defer s.wg.Done()
+			defer s.conns.Done()
 			s.handle(conn)
 		}()
 	}
@@ -787,10 +800,9 @@ func TestSMTPProviderConcurrentSends(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	server.mu.Lock()
-	defer server.mu.Unlock()
-	require.Len(t, server.sessions, sends)
-	for _, session := range server.sessions {
+	sessions := server.recorded()
+	require.Len(t, sessions, sends)
+	for _, session := range sessions {
 		assert.Len(t, session.rcpts, 1, "every send must only carry its own recipient")
 	}
 }
