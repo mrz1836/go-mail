@@ -3,7 +3,7 @@
 **Quick checklist for Claude Code when working with the go-mail package**
 
 ## 🎯 Project Overview
-Multi-provider email library for Go with support for AWS SES, Mandrill, Postmark, Resend, SendGrid, and SMTP. Interface-based architecture with extensive testing and security scanning.
+Multi-provider email library for Go with support for AWS SES, Mailgun, Mandrill, Postmark, Resend, SendGrid, and SMTP. Interface-based architecture with extensive testing and security scanning.
 
 ## 🏗️ Core Architecture
 
@@ -24,14 +24,14 @@ type Provider interface {
 ```
 
 Built-in providers wrap a small exported client interface (`SESClient`,
-`MandrillClient`, `PostmarkClient`, `SendGridClient`, `ResendClient`) that the
+`MailgunClient`, `MandrillClient`, `PostmarkClient`, `SendGridClient`, `ResendClient`) that the
 SDK client satisfies, so tests use fakes. Each also implements
 `FeatureSupporter` and applies its typed `ProviderOption` (ie: `PostmarkOption`).
 
 Shared pieces: `message.go` (address parsing, headers, attachments, tags),
 `mime.go` (MIME builder used by SES and SMTP; never writes a Bcc header).
 
-Provider files: `aws_ses.go`, `mandrill.go`, `postmark.go`, `resend.go`, `sendgrid.go`, `smtp.go`
+Provider files: `aws_ses.go`, `mailgun.go`, `mandrill.go`, `postmark.go`, `resend.go`, `sendgrid.go`, `smtp.go`
 
 ## 🔧 Essential Development Commands
 
@@ -129,6 +129,7 @@ if email.TrackClicks {
 ├── email.go           # Core Email struct and methods
 ├── config.go          # MailService and provider setup
 ├── aws_ses.go         # AWS SES implementation
+├── mailgun.go         # Mailgun implementation
 ├── mandrill.go        # Mandrill implementation
 ├── postmark.go        # Postmark implementation
 ├── resend.go          # Resend implementation
@@ -140,6 +141,7 @@ if email.TrackClicks {
 
 ### Dependencies
 - AWS SDK v2 for SES
+- `mailgun-go/v5` for Mailgun
 - `gochimp` for Mandrill
 - `postmark` client library
 - `resend-go/v4` for Resend

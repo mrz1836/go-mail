@@ -2,7 +2,7 @@
 
 # 📨&nbsp;&nbsp;go-mail
 
-**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/), [resend](https://resend.com/), [sendgrid](https://sendgrid.com/), [smtp](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol))**
+**Lightweight email package with multi-provider support ([ses](https://aws.amazon.com/ses/), [mailgun](https://www.mailgun.com/), [mandrill](https://mailchimp.com/features/transactional-email/), [postmark](https://postmarkapp.com/), [resend](https://resend.com/), [sendgrid](https://sendgrid.com/), [smtp](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol))**
 
 <br/>
 
@@ -151,7 +151,7 @@ provider options) are in [examples/examples.go](examples/examples.go).
 ### Features
 - Supports multiple service providers _(below)_, plus your own through the `Provider` interface
 - Failover across providers, with the provider's message id returned from `Send`
-- Provider-specific features through typed options _(ie: Postmark message streams, SendGrid templates)_
+- Provider-specific features through typed options _(ie: Postmark message streams, SendGrid templates, Mailgun test mode)_
 - AWS SES via static keys or the default credential chain _(IAM role)_
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol) with STARTTLS or implicit TLS, optional authentication, and timeouts
 - Plain-text and HTML content
@@ -171,25 +171,31 @@ provider options) are in [examples/examples.go](examples/examples.go).
 <br/>
 
 - [AWS SES](https://docs.aws.amazon.com/ses/) _(tags & metadata become message tags; tracking via a configuration set)_
+- [Mailgun](https://documentation.mailgun.com/) _(up to 10 tags; metadata becomes user variables; US or EU region)_
 - [Mandrill](https://mandrillapp.com/api/docs/) _(recipients are not preserved: each `To` recipient only sees their own address)_
 - [Postmark](https://postmarkapp.com/developer) _(one tag per email: multiple tags are joined with a comma)_
 - [Resend](https://resend.com/docs) _(open & click tracking configured per domain)_
 - [SendGrid](https://docs.sendgrid.com/) _(native open & click tracking)_
 - [SMTP](https://en.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol)
 
-| Feature                   | AWS SES | Mandrill | Postmark | Resend | SendGrid | SMTP |
-|---------------------------|:-------:|:--------:|:--------:|:------:|:--------:|:----:|
-| Tags                      |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
-| Metadata                  |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
-| Open / click tracking     |         |    ✓     |    ✓     |        |    ✓     |      |
-| Scheduled send (`SendAt`) |         |    ✓     |          |   ✓    |    ✓     |      |
-| Idempotency key           |         |          |          |   ✓    |          |      |
-| Auto text                 |         |    ✓     |          |   ✓    |          |      |
-| View content link         |         |    ✓     |          |        |          |      |
+| Feature                   | AWS SES | Mailgun | Mandrill | Postmark | Resend | SendGrid | SMTP |
+|---------------------------|:-------:|:-------:|:--------:|:--------:|:------:|:--------:|:----:|
+| Tags                      |    ✓    |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
+| Metadata                  |    ✓    |    ✓    |    ✓     |    ✓     |   ✓    |    ✓     |      |
+| Open / click tracking     |         |    ✓    |    ✓     |    ✓     |        |    ✓     |      |
+| Scheduled send (`SendAt`) |         |    ✓    |    ✓     |          |   ✓    |    ✓     |      |
+| Idempotency key           |         |         |          |          |   ✓    |          |      |
+| Auto text                 |         |         |    ✓     |          |   ✓    |          |      |
+| View content link         |         |         |    ✓     |          |        |          |      |
 
 When an email uses a feature its provider does not support, go-mail logs a
 warning (or returns `ErrUnsupportedFeature` when `StrictFeatures` is set). An
 unsupported `SendAt` is always an error, so a scheduled email is never sent early.
+
+Mailgun detects an attachment's content type from its file name and uses the
+file name as the content id of an inline image, so inline attachments are sent
+named by their `ContentID`: use a content id with an extension (ie: `logo.png`,
+referenced as `cid:logo.png`).
 </details>
 
 <details>
@@ -226,6 +232,7 @@ email.With(
     gomail.PostmarkOption(func(e *postmark.Email) { e.MessageStream = "broadcast" }),
     gomail.SendGridOption(func(m *mail.SGMailV3) { m.SetTemplateID("d-123") }),
     gomail.ResendOption(func(r *resend.SendEmailRequest) { r.TopicId = "topic_123" }),
+    gomail.MailgunOption(func(m *mailgun.PlainMessage) { m.SetRequireTLS(true) }),
     gomail.MandrillOption(func(m *gochimp.Message) { m.Subaccount = "tenant-1" }),
     gomail.SESOption(func(in *ses.SendRawEmailInput) { in.FromArn = aws.String(arn) }),
 )
@@ -241,8 +248,8 @@ client, or a fake in tests). A registered provider is kept by `StartUp`.
 
 ```go
 // A custom provider
-const Mailgun gomail.ServiceProvider = 100
-err := mail.RegisterProvider(Mailgun, myMailgunProvider)
+const SparkPost gomail.ServiceProvider = 100
+err := mail.RegisterProvider(SparkPost, mySparkPostProvider)
 
 // A built-in provider with a custom client (ie: SendGrid EU data residency)
 client := sendgrid.NewSendClient(apiKey)
@@ -277,6 +284,8 @@ A provider is loaded by `StartUp` for every service whose credentials are set.
 | `AwsSesAccessID`, `AwsSesSecretKey`                           | AWS SES static credentials                                                                   |
 | `AwsSesUseIAMRole`                                            | Load AWS SES from the default credential chain instead of static keys                       |
 | `AwsSesRegion`, `AwsSesEndpoint`, `AwsSesConfigurationSet`    | AWS SES region (default `us-east-1`), custom endpoint, and configuration set                 |
+| `MailgunAPIKey`, `MailgunDomain`                              | Mailgun credentials and sending domain (defaults to the domain of the from address)          |
+| `MailgunAPIBase`                                              | Mailgun API base URL (default US region; `mailgun.APIBaseEU` for the EU region)              |
 | `MandrillAPIKey`, `PostmarkServerToken`                       | Mandrill and Postmark credentials                                                            |
 | `ResendAPIKey`, `SendGridAPIKey`                              | Resend and SendGrid credentials                                                              |
 | `SMTPHost`, `SMTPPort`, `SMTPUsername`, `SMTPPassword`        | SMTP server (port defaults to `587`; leave the username empty for a relay without auth)      |
