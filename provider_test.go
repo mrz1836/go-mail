@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/mailgun/mailgun-go/v5"
 	"github.com/mattbaird/gochimp"
 	"github.com/mrz1836/postmark"
 	"github.com/resend/resend-go/v4"
@@ -63,6 +64,7 @@ func TestProviderOptionServiceProvider(t *testing.T) {
 	assert.Equal(t, Postmark, PostmarkOption(nil).ServiceProvider())
 	assert.Equal(t, SendGrid, SendGridOption(nil).ServiceProvider())
 	assert.Equal(t, Resend, ResendOption(nil).ServiceProvider())
+	assert.Equal(t, Mailgun, MailgunOption(nil).ServiceProvider())
 }
 
 // customOption is a ProviderOption for a custom provider
@@ -89,6 +91,7 @@ func TestApplyProviderOptions(t *testing.T) {
 
 	// Every option type compiles against its request type
 	applyProviderOptions[SESOption](opts, &ses.SendRawEmailInput{})
+	applyProviderOptions[MailgunOption](opts, mailgun.NewMessage("", "", "", ""))
 	applyProviderOptions[MandrillOption](opts, &gochimp.Message{})
 	applyProviderOptions[ResendOption](opts, &resend.SendEmailRequest{})
 	applyProviderOptions[SendGridOption](opts, sgmail.NewV3Mail())

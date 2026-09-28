@@ -32,13 +32,14 @@ func FuzzContainsServiceProvider(f *testing.F) {
 	f.Add([]byte{}, int(0))           // empty -> search AwsSes
 	f.Add([]byte{0, 1, 2, 3}, int(3)) // AwsSes..SMTP -> search SMTP
 	f.Add([]byte{4, 5}, int(5))       // SendGrid, Resend -> search Resend
+	f.Add([]byte{5, 6}, int(6))       // Resend, Mailgun -> search Mailgun
 
 	f.Fuzz(func(t *testing.T, providerBytes []byte, searchProvider int) {
 		// Convert bytes to ServiceProvider slice
 		providers := make([]ServiceProvider, 0, len(providerBytes))
 		for _, b := range providerBytes {
 			// Keep provider values within valid range
-			if b <= byte(Resend) {
+			if b <= byte(Mailgun) {
 				providers = append(providers, ServiceProvider(b))
 			}
 		}
@@ -595,6 +596,36 @@ func FuzzNameValueTags(f *testing.F) {
 			_, dup := seen[tag.name]
 			require.False(t, dup, "tag names must be unique")
 			seen[tag.name] = struct{}{}
+		}
+	})
+}
+
+// FuzzMailgunTags tests that Mailgun tags are never empty or duplicated and keep their order
+func FuzzMailgunTags(f *testing.F) {
+	f.Add("welcome", "Welcome", "digest")
+	f.Add("", "tag", "")
+	f.Add("café", "CAFÉ", "tag🚀")
+	f.Add(strings.Repeat("a", 300), "a", "A")
+
+	f.Fuzz(func(t *testing.T, tag1, tag2, tag3 string) {
+		input := []string{tag1, tag2, tag3, tag1}
+		tags := mailgunTags(input)
+
+		seen := make(map[string]struct{}, len(tags))
+		next := 0
+		for _, tag := range tags {
+			require.NotEmpty(t, tag, "tags must not be empty")
+
+			key := strings.ToLower(tag)
+			_, dup := seen[key]
+			require.False(t, dup, "tags must be unique (case-insensitive)")
+			seen[key] = struct{}{}
+
+			// Every tag comes from the input, in the original order
+			for next < len(input) && input[next] != tag {
+				next++
+			}
+			require.Less(t, next, len(input), "tag %q is not from the input, in order", tag)
 		}
 	})
 }

@@ -5,6 +5,7 @@ import (
 	"slices"
 
 	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/mailgun/mailgun-go/v5"
 	"github.com/mattbaird/gochimp"
 	"github.com/mrz1836/postmark"
 	"github.com/resend/resend-go/v4"
@@ -13,10 +14,10 @@ import (
 
 // Provider sends an email through a single email service.
 //
-// Every built-in service (AWS SES, Mandrill, Postmark, SendGrid, Resend and
-// SMTP) implements Provider, and custom providers (or test fakes) can be added
-// to a MailService with RegisterProvider. The email passed to Send has already
-// been validated by MailService.
+// Every built-in service (AWS SES, Mailgun, Mandrill, Postmark, SendGrid,
+// Resend and SMTP) implements Provider, and custom providers (or test fakes)
+// can be added to a MailService with RegisterProvider. The email passed to Send
+// has already been validated by MailService.
 type Provider interface {
 	Send(ctx context.Context, email *Email) (*SendResult, error)
 }
@@ -141,6 +142,12 @@ type ResendOption func(request *resend.SendEmailRequest)
 
 // ServiceProvider returns Resend
 func (ResendOption) ServiceProvider() ServiceProvider { return Resend }
+
+// MailgunOption customizes the Mailgun message (ie: template, test mode, require TLS)
+type MailgunOption func(message *mailgun.PlainMessage)
+
+// ServiceProvider returns Mailgun
+func (MailgunOption) ServiceProvider() ServiceProvider { return Mailgun }
 
 // applyProviderOptions runs every option of type O in opts against target
 func applyProviderOptions[O ~func(*T), T any](opts []ProviderOption, target *T) {
