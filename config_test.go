@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/mailgun/mailgun-go/v5"
 	"github.com/mattbaird/gochimp"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -52,6 +53,7 @@ func TestServiceProvider_String(t *testing.T) {
 		{"smtp", SMTP, "SMTP"},
 		{"sendgrid", SendGrid, "SendGrid"},
 		{"resend", Resend, "Resend"},
+		{"mailgun", Mailgun, "Mailgun"},
 		{"unknown provider", ServiceProvider(999), "Unknown"},
 	}
 
@@ -117,13 +119,19 @@ func TestMailService_StartUp(t *testing.T) {
 	service.SMTPPort = 465
 	service.SendGridAPIKey = "1234567"
 	service.ResendAPIKey = "re_1234567"
+	service.MailgunAPIKey = "key-1234567"
+	service.MailgunDomain = "mg.example.com"
 	require.NoError(t, service.StartUp())
-	assert.Equal(t, []ServiceProvider{Mandrill, AwsSes, Postmark, SMTP, SendGrid, Resend}, service.AvailableProviders)
+	assert.Equal(t, []ServiceProvider{Mandrill, AwsSes, Postmark, SMTP, SendGrid, Resend, Mailgun}, service.AvailableProviders)
 
 	assert.IsType(t, &MandrillProvider{}, service.providers[Mandrill])
 	assert.IsType(t, &PostmarkProvider{}, service.providers[Postmark])
 	assert.IsType(t, &SendGridProvider{}, service.providers[SendGrid])
 	assert.IsType(t, &ResendProvider{}, service.providers[Resend])
+
+	mailgunProvider, ok := service.providers[Mailgun].(*MailgunProvider)
+	require.True(t, ok)
+	assert.Equal(t, "mg.example.com", mailgunProvider.domain)
 
 	sesProvider, ok := service.providers[AwsSes].(*SESProvider)
 	require.True(t, ok)
@@ -171,11 +179,11 @@ func TestMailService_StartUpKeepsRegisteredProvider(t *testing.T) {
 func TestMailService_StartUpCustomProviderOnly(t *testing.T) {
 	t.Parallel()
 
-	const mailgun ServiceProvider = 100
+	const custom ServiceProvider = 100
 	service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail}
-	require.NoError(t, service.RegisterProvider(mailgun, &fakeProvider{}))
+	require.NoError(t, service.RegisterProvider(custom, &fakeProvider{}))
 	require.NoError(t, service.StartUp())
-	assert.Equal(t, []ServiceProvider{mailgun}, service.AvailableProviders)
+	assert.Equal(t, []ServiceProvider{custom}, service.AvailableProviders)
 }
 
 // TestMailService_StartUpAwsSesIAMRole tests that the AWS SES provider loads via
@@ -225,6 +233,41 @@ func TestMailService_StartUpMandrillTimeout(t *testing.T) {
 			assert.Equal(t, test.expected, api.Timeout)
 		})
 	}
+}
+
+// TestMailService_StartUpMailgunAPIBase checks the Mailgun client uses the configured API base
+func TestMailService_StartUpMailgunAPIBase(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name     string
+		apiBase  string
+		expected string
+	}{
+		{"default us region", "", mailgun.APIBaseUS},
+		{"eu region", mailgun.APIBaseEU, mailgun.APIBaseEU},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, MailgunAPIKey: "key", MailgunAPIBase: test.apiBase}
+			require.NoError(t, service.StartUp())
+
+			provider, ok := service.providers[Mailgun].(*MailgunProvider)
+			require.True(t, ok)
+			client, ok := provider.client.(*mailgun.Client)
+			require.True(t, ok)
+			assert.Equal(t, test.expected, client.APIBase())
+			assert.Empty(t, provider.domain, "the sending domain defaults to the from address domain")
+		})
+	}
+
+	t.Run("api base with a version is rejected", func(t *testing.T) {
+		service := &MailService{FromUsername: testUsernameEmail, FromDomain: testDomainEmail, MailgunAPIKey: "key", MailgunAPIBase: "https://api.mailgun.net/v3"}
+		err := service.StartUp()
+		require.ErrorContains(t, err, "invalid MailgunAPIBase")
+		assert.False(t, service.hasProvider(Mailgun))
+	})
 }
 
 // TestMailService_RegisterProvider checks provider registration
@@ -279,6 +322,7 @@ func newSecretService() MailService {
 		AwsSesAccessID:      "AKIAEXAMPLE",
 		AwsSesSecretKey:     "aws-secret",
 		FromDomain:          testDomainEmail,
+		MailgunAPIKey:       "mailgun-secret",
 		MandrillAPIKey:      "mandrill-secret",
 		PostmarkServerToken: "postmark-secret",
 		ResendAPIKey:        "resend-secret",
@@ -289,7 +333,7 @@ func newSecretService() MailService {
 
 // secretValues are the secrets set by newSecretService
 func secretValues() []string {
-	return []string{"aws-secret", "mandrill-secret", "postmark-secret", "resend-secret", "smtp-secret", "sendgrid-secret"}
+	return []string{"aws-secret", "mailgun-secret", "mandrill-secret", "postmark-secret", "resend-secret", "smtp-secret", "sendgrid-secret"}
 }
 
 // TestMailService_RedactsSecrets checks secrets never appear in JSON or fmt output

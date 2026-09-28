@@ -15,6 +15,12 @@ import (
 	gomail "github.com/mrz1836/go-mail"
 )
 
+// Default sender used by the examples
+const (
+	exampleFromName     = "No Reply"
+	exampleFromUsername = "no-reply"
+)
+
 func main() {
 	// Run the AWS SES example
 	awsSesExample()
@@ -37,6 +43,9 @@ func main() {
 	// Run the Resend example
 	// resendExample()
 
+	// Run the Mailgun example
+	// mailgunExample()
+
 	// Example using ALL options available
 	// allOptionsExample()
 
@@ -48,8 +57,8 @@ func main() {
 func awsSesExample() {
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -98,8 +107,8 @@ func awsSesIAMRoleExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -140,8 +149,8 @@ func mandrillExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -184,8 +193,8 @@ func postmarkExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -228,8 +237,8 @@ func smtpExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -277,8 +286,8 @@ func sendGridExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -325,8 +334,8 @@ func resendExample() { //nolint:unused // this is an example function
 
 	// Config
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN") // must be a domain verified in Resend
 	if len(mail.FromDomain) == 0 {
 		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
@@ -369,13 +378,65 @@ func resendExample() { //nolint:unused // this is an example function
 	log.Printf("email sent!")
 }
 
+// mailgunExample shows an example using Mailgun as the provider
+func mailgunExample() { //nolint:unused // this is an example function
+
+	// Config
+	mail := new(gomail.MailService)
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
+	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
+	if len(mail.FromDomain) == 0 {
+		log.Fatal("missing env: EMAIL_FROM_DOMAIN")
+	}
+
+	// Set the to field
+	toRecipients := os.Getenv("EMAIL_TEST_TO_RECIPIENT")
+	if len(toRecipients) == 0 {
+		log.Fatal("missing env: EMAIL_TEST_TO_RECIPIENT")
+	}
+
+	// Provider
+	mail.MailgunAPIKey = os.Getenv("EMAIL_MAILGUN_API_KEY")
+	if len(mail.MailgunAPIKey) == 0 {
+		log.Fatal("missing env: EMAIL_MAILGUN_API_KEY")
+	}
+	mail.MailgunDomain = os.Getenv("EMAIL_MAILGUN_DOMAIN")    // optional sending domain (ie: mg.example.com), defaults to EMAIL_FROM_DOMAIN
+	mail.MailgunAPIBase = os.Getenv("EMAIL_MAILGUN_API_BASE") // optional, ie: https://api.eu.mailgun.net for the EU region
+	provider := gomail.Mailgun
+
+	// Start the service
+	err := mail.StartUp()
+	if err != nil {
+		log.Printf("error in StartUp: %s using provider: %s", err.Error(), provider)
+	}
+
+	// Create and send a basic email
+	email := mail.NewEmail()
+	email.HTMLContent = "<html><body>This is a <b>go-mail</b> example email using <i>HTML</i></body></html>"
+	email.Recipients = []string{toRecipients}
+	email.Subject = "example go-mail email using Mailgun"
+	email.Tags = []string{"example"}
+	email.Metadata = map[string]string{"user_id": "42"} // returned in Mailgun webhooks as user variables
+
+	// Mailgun supports open & click tracking per email
+	email.TrackClicks = true
+	email.TrackOpens = true
+
+	// Send the email
+	if err = mail.SendEmail(context.Background(), email, provider); err != nil {
+		log.Fatalf("error in SendEmail: %s using provider: %s", err.Error(), provider)
+	}
+	log.Printf("email sent!")
+}
+
 // allOptionsExample is using the most number of options/features
 func allOptionsExample() { //nolint:unused // this is an example function
 
 	// Define your service configuration
 	mail := new(gomail.MailService)
-	mail.FromName = "No Reply"
-	mail.FromUsername = "no-reply"
+	mail.FromName = exampleFromName
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN") // example.com
 
 	// Mandrill
@@ -400,7 +461,11 @@ func allOptionsExample() { //nolint:unused // this is an example function
 	// Resend
 	mail.ResendAPIKey = os.Getenv("EMAIL_RESEND_API_KEY") // re_xxxx...
 
-	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark SendGrid Resend
+	// Mailgun
+	mail.MailgunAPIKey = os.Getenv("EMAIL_MAILGUN_API_KEY") // key-xxxx...
+	mail.MailgunDomain = os.Getenv("EMAIL_MAILGUN_DOMAIN")  // mg.example.com
+
+	provider := gomail.SMTP // Other options: AwsSes Mandrill Postmark SendGrid Resend Mailgun
 
 	// Start the service
 	err := mail.StartUp()
@@ -450,7 +515,7 @@ func advancedExample() { //nolint:unused // this is an example function
 	// Config: two providers so one can fail over to the other
 	mail := new(gomail.MailService)
 	mail.FromName = "Acme, Inc."
-	mail.FromUsername = "no-reply"
+	mail.FromUsername = exampleFromUsername
 	mail.FromDomain = os.Getenv("EMAIL_FROM_DOMAIN")
 	mail.PostmarkServerToken = os.Getenv("EMAIL_POSTMARK_SERVER_TOKEN")
 	mail.SendGridAPIKey = os.Getenv("EMAIL_SENDGRID_API_KEY")

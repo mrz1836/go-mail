@@ -30,6 +30,7 @@ var (
 
 	// Provider errors
 	ErrInvalidAWSResponse = errors.New("aws ses did not return expected valid response")
+	ErrMailgunError       = errors.New("error from mailgun")
 	ErrMessageNotSent     = errors.New("message status and not sent")
 	ErrPostmarkError      = errors.New("error from postmark")
 	ErrSendGridError      = errors.New("error from sendgrid")

@@ -74,7 +74,7 @@ func newTestService(t *testing.T, providers map[ServiceProvider]Provider) *MailS
 	t.Helper()
 
 	service := &MailService{FromDomain: testDomainEmail, FromUsername: testUsernameEmail}
-	for _, id := range []ServiceProvider{AwsSes, Mandrill, Postmark, SMTP, SendGrid, Resend, ServiceProvider(100)} {
+	for _, id := range []ServiceProvider{AwsSes, Mandrill, Postmark, SMTP, SendGrid, Resend, Mailgun, ServiceProvider(100)} {
 		if provider, ok := providers[id]; ok {
 			require.NoError(t, service.RegisterProvider(id, provider))
 		}

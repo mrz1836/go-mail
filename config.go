@@ -12,6 +12,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/ses"
+	"github.com/mailgun/mailgun-go/v5"
 	"github.com/mattbaird/gochimp"
 	"github.com/mrz1836/postmark"
 	"github.com/resend/resend-go/v4"
@@ -29,6 +30,7 @@ const (
 	SMTP                            // SMTP Email Service
 	SendGrid                        // SendGrid Email Service
 	Resend                          // Resend Email Service
+	Mailgun                         // Mailgun Email Service
 )
 
 // String returns the human-readable name of the service provider
@@ -46,6 +48,8 @@ func (s ServiceProvider) String() string {
 		return "SendGrid"
 	case Resend:
 		return "Resend"
+	case Mailgun:
+		return "Mailgun"
 	default:
 		return "Unknown"
 	}
@@ -87,6 +91,9 @@ type MailService struct { //nolint:recvcheck // value receivers on MarshalJSON/S
 	FromDomain             string                       `json:"from_domain" mapstructure:"from_domain"`                             // ie: example.com
 	FromName               string                       `json:"from_name" mapstructure:"from_name"`                                 // ie: No Reply
 	FromUsername           string                       `json:"from_username" mapstructure:"from_username"`                         // ie: no-reply
+	MailgunAPIBase         string                       `json:"mailgun_api_base" mapstructure:"mailgun_api_base"`                   // optional mailgun api base (ie: https://api.eu.mailgun.net for the EU region)
+	MailgunAPIKey          string                       `json:"mailgun_api_key" mapstructure:"mailgun_api_key"`                     // mailgun api key
+	MailgunDomain          string                       `json:"mailgun_domain" mapstructure:"mailgun_domain"`                       // optional mailgun sending domain (ie: mg.example.com); defaults to the from address domain
 	MandrillAPIKey         string                       `json:"mandrill_api_key" mapstructure:"mandrill_api_key"`                   // mandrill api key
 	PostmarkServerToken    string                       `json:"postmark_server_token" mapstructure:"postmark_server_token"`         // ie: abc123...
 	ResendAPIKey           string                       `json:"resend_api_key" mapstructure:"resend_api_key"`                       // resend api key (ie: re_xxxx...)
@@ -207,6 +214,7 @@ func (m *MailService) loadProviders() error {
 		{id: Resend, enabled: len(m.ResendAPIKey) > 0, load: func() (Provider, error) {
 			return NewResendProvider(resend.NewClient(m.ResendAPIKey).Emails), nil
 		}},
+		{id: Mailgun, enabled: len(m.MailgunAPIKey) > 0, load: m.newMailgunProvider},
 	}
 
 	for _, loader := range loaders {
@@ -230,6 +238,18 @@ func (m *MailService) newMandrillProvider() (Provider, error) {
 	}
 	api.Timeout = m.sendTimeout()
 	return NewMandrillProvider(api), nil
+}
+
+// newMailgunProvider builds the Mailgun provider, using the configured API base
+// (ie: the EU region) when set
+func (m *MailService) newMailgunProvider() (Provider, error) {
+	client := mailgun.NewMailgun(m.MailgunAPIKey)
+	if len(m.MailgunAPIBase) > 0 {
+		if err := client.SetAPIBase(m.MailgunAPIBase); err != nil {
+			return nil, fmt.Errorf("invalid MailgunAPIBase %q: %w", m.MailgunAPIBase, err)
+		}
+	}
+	return NewMailgunProvider(client, m.MailgunDomain), nil
 }
 
 // newSESProvider builds the AWS SES provider
@@ -334,7 +354,7 @@ func (m *MailService) logger() *slog.Logger {
 func (m *MailService) redacted() MailService {
 	c := *m
 	for _, secret := range []*string{
-		&c.AwsSesSecretKey, &c.MandrillAPIKey, &c.PostmarkServerToken,
+		&c.AwsSesSecretKey, &c.MailgunAPIKey, &c.MandrillAPIKey, &c.PostmarkServerToken,
 		&c.ResendAPIKey, &c.SMTPPassword, &c.SendGridAPIKey,
 	} {
 		if len(*secret) > 0 {
