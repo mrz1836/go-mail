@@ -8,9 +8,9 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.9
 	github.com/aws/aws-sdk-go-v2/service/ses v1.42.4
 	github.com/aymerick/douceur v0.2.0
-	github.com/mailgun/mailgun-go/v5 v5.19.3
+	github.com/mailgun/mailgun-go/v5 v5.19.4
 	github.com/mattbaird/gochimp v0.0.0-20200820164431-f1082bcdf63f
-	github.com/mrz1836/postmark v1.9.2
+	github.com/mrz1836/postmark v1.9.3
 	github.com/resend/resend-go/v4 v4.8.2
 	github.com/sendgrid/rest v2.6.9+incompatible
 	github.com/sendgrid/sendgrid-go v3.16.1+incompatible
