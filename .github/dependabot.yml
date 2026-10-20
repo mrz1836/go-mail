@@ -18,6 +18,9 @@
 #   • Force‑push and delete‑branch disabled via branch‑protection rules.
 #   • PR limit = 10 to avoid queue flooding.
 #   • All dependency PRs require passing CI checks before merging.
+#   • Cooldown – new releases wait 3 days before a version‑update PR (Go modules:
+#     patch 3 / minor 7 / major 14 days); security updates are never delayed.
+#   • Cooldown skipped for first‑party (mrz1836) and trusted publishers.
 # ────────────────────────────────────────────────────────────────
 
 version: 2
@@ -47,6 +50,12 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    cooldown:
+      default-days: 3
+      semver-patch-days: 3
+      semver-minor-days: 7
+      semver-major-days: 14
+      exclude: ["github.com/mrz1836/*"]
 
   # ──────────────────────────────────────────────────────────────
   # 2. GitHub Actions Workflows
@@ -70,6 +79,9 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    cooldown:
+      default-days: 3
+      exclude: ["actions/*", "github/*", "gitleaks/*", "ossf/*"]
 
   # ──────────────────────────────────────────────────────────────
   # 3. DevContainer (devcontainer.json : base image + features)
@@ -93,3 +105,6 @@ updates:
     commit-message:
       prefix: "chore"
       include: "scope"
+    cooldown:
+      default-days: 3
+      exclude: ["ghcr.io/devcontainers/features/*"]
